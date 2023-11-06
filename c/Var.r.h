@@ -7,6 +7,7 @@
 #define VAR_R_H
 
 #include "../../Ubject/Ubject.r.h"
+#include "ds/HashMap.h"
 #include "ds/Queue.h"
 
 /**
@@ -38,7 +39,7 @@ struct LaudVarClass {
                                      function for LaudVar. */
   void (*differentiate)(
       const void *self, void *derivative,
-      struct LaudQueue *ddx); /**< A function pointer for differentiation. */
+      struct LaudHashMap *ddx); /**< A function pointer for differentiation. */
   char (*isFloat)(const void *self); /**< A function pointer to check if LaudVar
                                         holds a float value. */
 };
@@ -58,7 +59,7 @@ static void *LaudVar_evaluate(void *self);
  * @param ddx An array of pointers to store the derivatives.
  */
 static void LaudVar_differentiate(const void *self, const void *derivative,
-                                  struct LaudQueue *ddx);
+                                  struct LaudHashMap *ddx);
 /**
  * @var LaudVarClass
  *
