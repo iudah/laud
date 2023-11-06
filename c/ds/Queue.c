@@ -32,12 +32,13 @@ static void *Queue(int count) {
  * @param x The element to enqueue.
  */
 static void enqueue(struct LaudQueue *q, const void *x) {
-  if (q->capacity == q->count) // dynamic array
-  {                            // If the queue is full, double its capacity.
+  int total = q->count + q->front;
+  if (q->capacity == total) // dynamic array
+  {                         // If the queue is full, double its capacity.
     q->capacity *= 2;
     q->dynamic_array = realloc(q->dynamic_array, q->capacity * sizeof(void *));
   }
-  q->dynamic_array[q->count] = (void *)x;
+  q->dynamic_array[total] = (void *)x;
   // not an Ubject, so leave Ubject stuff to Ubjects
   // reference((void *)x);
   q->count++;
