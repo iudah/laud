@@ -75,10 +75,14 @@ void *LaudVarEvaluate(void *self);
  *
  * @param self A pointer to the LaudVar object.
  * @param derivative A pointer to the derivative object.
- * @param ddx An array of pointers to store the derivatives.
+ * @param ddx A map of pointers to store the derivatives.
  * @return The number of derivatives computed.
  */
-int LaudVarDifferentiate(const void *self, void *derivative, void ***ddx);
+int LaudVarDifferentiate(const void *self, void *derivative, void *ddx);
+void *LaudVarDerivativeMap();
+void LaudVarDeleteDerivativeMap(void *map);
+void LaudVarDerivativeMapIterStart(void *map);
+void **LaudVarDerivativeMapNext(void *map);
 // void *LaudDerivativeGraph(const void *self);
 /**
  * @brief Set the continuity of a LaudVar object (continuous or discontinuous).
