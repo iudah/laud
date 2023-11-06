@@ -18,9 +18,9 @@ static void *LaudVar_evaluate(void *self_) {
   return self_;
 }
 static void LaudVar_differentiate(const void *self_, const void *derivative,
-                                  struct LaudQueue *ddx_queue) {
-  LaudQueue_enqueue(ddx_queue, self_);
-  LaudQueue_enqueue(ddx_queue, derivative ? derivative : One);
+                                  struct LaudHashMap *ddx_queue) {
+  LaudHashMapFn.insert(ddx_queue, self_, derivative ? derivative : One);
+  reference((void *)(derivative ? derivative : One));
 }
 static char LaudVar_isFloat(void *self_) {
   // TODO: Update implementation
@@ -117,16 +117,25 @@ void *LaudVarEvaluate(void *self_) {
   }
   return class->evaluate(self_);
 }
-int LaudVarDifferentiate(const void *self_, void *derivative, void ***ddx) {
+
+void *LaudVarDerivativeMap() { return LaudHashMapFn.HashMap(7); }
+void LaudVarDeleteDerivativeMap(void *map) { return LaudHashMapFn.del(map); }
+void LaudVarDerivativeMapIterStart(void *map) {
+  return LaudHashMapFn.iter_begin(map);
+}
+void **LaudVarDerivativeMapNext(void *map) {
+  return LaudHashMapFn.iter_next(map);
+}
+int LaudVarDifferentiate(const void *self_, void *derivative, void *ddx) {
   const struct LaudVarClass *class = classOf(self_);
   if (!class) {
     UbjectError.error("LaudVar: object class not found\n");
   } else if (!class->differentiate) {
     UbjectError.error("LaudVar: differentiate function missing\n");
   }
-  struct LaudQueue *queue = LaudQueue(2);
-  class->differentiate(self_, derivative, queue);
-  return LaudQueueArray(queue, ddx);
+  struct LaudHashMap *map = ddx; // = LaudHashMapFn.HashMap(3);
+  class->differentiate(self_, derivative, map);
+  return LaudHashMapFn.count(map);
 }
 
 // Basic operators
