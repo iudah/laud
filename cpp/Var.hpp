@@ -17,6 +17,7 @@ protected:
   Var(const void *mval);
 
 public:
+  Var();
   Var(const float value);
   Var(const Var &var);
   ~Var();
@@ -78,9 +79,9 @@ public:
    * @param y reference to differentiated object
    * @param length number of object in ddx, it is 2 times the number of
    * differentiated independent variables
-   * @param ddx array of [independent x, derivatives wrt x] pair
+   * @param ddx LaudVarDerivativeMap of [independent x, derivatives wrt x] pair
    */
-  friend Laud::Derivatives::Derivatives(Laud::Var *y, int length, void **ddx);
+  friend Laud::Derivatives::Derivatives(Laud::Var *y, int length, void *ddx);
   /**
    * @brief Override stream insertion object
    *
