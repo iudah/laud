@@ -10,6 +10,7 @@ extern "C" {
 
 using namespace Laud;
 
+Var::Var() {}
 Var::Var(const void *mval_) : laud_var_handle(LaudVarCopy(mval_)) {}
 Var::Var(const float val) : laud_var_handle(LaudVarVar(val)) {}
 Var::Var(const Var &lvar)
@@ -32,8 +33,8 @@ Var &Var::evaluate() {
   return *this;
 }
 Derivatives Var::differentiate() {
-  void **ddxs;
-  return Derivatives(this, LaudVarDifferentiate(laud_var_handle, NULL, &ddxs),
+  void *ddxs = LaudVarDerivativeMap();
+  return Derivatives(this, LaudVarDifferentiate(laud_var_handle, NULL, ddxs),
                      ddxs);
 }
 
