@@ -28,7 +28,7 @@ static void laud_configure_var(void *laud_handle, const size_t rank,
   struct LaudVar *this = laud_handle;
 
   // set continuity
-  this->is_continous = is_continous != 0;
+  this->is_continuous = is_continous != 0;
 
   // create rank, shape, and length holder
   this->rank_shape_length = malloc((2 + rank) * sizeof(size_t));
@@ -258,11 +258,11 @@ void laud_set_continuity(void *self_, char continuous) {
   }
 
   struct LaudVar *self = (struct LaudVar *)self_;
-  self->is_continous = continuous ? 1 : 0;
+  self->is_continuous = continuous ? 1 : 0;
 }
 
 char laud_is_continuous(const void *self) {
-  return (unsigned char)((struct LaudVar *)self)->is_continous;
+  return (unsigned char)((struct LaudVar *)self)->is_continuous;
 }
 
 void *laud_evaluate(void *self_) {
@@ -482,195 +482,6 @@ char *laud_as_string(void *a, char *buffer, size_t limit) {
   return buffer;
 }
 
-struct LaudSliceObject {
-  size_t start, end, step;
-};
-void assess_section(const size_t section, struct LaudSliceObject *slice,
-                    const int value, const size_t dim, const size_t *shape) {
-  size_t *current_field;
-
-  switch (section) {
-  case 0:
-    current_field = &slice->start;
-    break;
-  case 1:
-    current_field = &slice->end;
-    break;
-  case 2:
-    current_field = &slice->step;
-    break;
-  default:
-    UbjectError.error("assess_section: invalid section index: %zu", section);
-    return;
-  }
-
-  current_field[0] = (size_t)(value >= 0 ? value : (shape[dim] + value));
-
-  if ((section == 0 && slice->start >= shape[dim]) ||
-      (section == 1 && slice->end > shape[dim])) {
-    UbjectError.error("assess_section: slice %s (%i) out of bound (%i)",
-                      section ? "end" : "start", value, shape[dim]);
-  }
-}
-void expected_int(const char *fmt, const char *slice) {
-  if (!fmt || !slice) {
-    UbjectError.error("expected_int: invalid input in expected_int");
-    return;
-  }
-
-  size_t info_size = 2 + (size_t)(fmt - slice);
-  char info[info_size];
-  memset(info, '~', info_size - 1);
-  info[info_size - 2] = '^';
-  info[info_size - 1] = 0;
-
-  UbjectError.error("expected integer before ','\n%s\n%s", slice, info);
-}
-
-void effect_slice(const size_t rank, const size_t dim,
-                  const struct LaudSliceObject *slice,
-                  const size_t dst_cum_offset, const size_t src_cum_offset,
-                  const size_t dst_dim_multiplier,
-                  const size_t src_dim_multiplier,
-                  const size_t *const dst_shape, const size_t *const src_shape,
-                  float *dest, const float *const src) {
-  if (rank != dim) {
-
-    size_t j = 0;
-    for (size_t i = slice[dim].start; i < slice[dim].end;
-         i += slice[dim].step) {
-      if (rank - 1 != dim)
-        effect_slice(rank, dim + 1, slice,
-                     dst_cum_offset + j * dst_dim_multiplier,
-                     src_cum_offset + i * src_dim_multiplier,
-                     dst_dim_multiplier / dst_shape[dim + 1],
-                     src_dim_multiplier / src_shape[dim + 1], dst_shape,
-                     src_shape, dest, src);
-      else
-        dest[dst_cum_offset + j] = src[src_cum_offset + i];
-
-      j++;
-    }
-  }
-}
-
-void perform_slice(struct LaudSliceObject *slice_object, float *values,
-                   size_t *new_shape, size_t new_length,
-                   const struct LaudVar *const self) {
-
-  effect_slice(rank(self), 0, slice_object, 0, 0, new_length / new_shape[0],
-               laud_length(self) / shape(self)[0], new_shape, shape(self),
-               values, laud_values(self));
-}
-void *laud_slice(const void *self, const char *slice, ...) {
-  char c;
-  char ignore_colon = 0;
-  char *fmt = (char *)slice;
-  struct LaudSliceObject *slice_object =
-      malloc(sizeof(struct LaudSliceObject) * rank(self));
-
-  if (!slice_object) {
-    UbjectError.error("laud_slice: memory allocation failed in laud_slice\n");
-    return NULL;
-  }
-
-  size_t dim = 0;
-  size_t section = 0;
-
-  size_t new_shape[rank(self)];
-  size_t new_length = 1;
-
-  while ((c = fmt[0])) {
-    switch (c) {
-    case '0' ... '9':
-    case '-':
-    case '+':
-    case '.': {
-      assess_section(section, slice_object + dim, (int)strtol(fmt, &fmt, 10),
-                     dim, shape(self));
-      ignore_colon = 1;
-      fmt--;
-      section++;
-    } break;
-
-    case ':':
-      if (!ignore_colon) {
-        assess_section(section, slice_object + dim,
-                       section == 0 ? 0 : shape(self)[dim], dim, shape(self));
-        section++;
-      }
-      ignore_colon = 0;
-      break;
-
-    case ',': {
-      if (section == 0 || section == 2) {
-        expected_int(fmt, slice);
-      }
-
-      while (section < 3) {
-        assess_section(section, slice_object + dim,
-                       section == 1
-                           ? (ignore_colon ? slice_object[dim].start + 1
-                                           : shape(self)[dim])
-                           : 1,
-                       dim, shape(self));
-        section++;
-      }
-      section = 0;
-      ignore_colon = 0;
-
-#define SET_UP_NEW_SHAPE                                                       \
-  new_length *= new_shape[dim] =                                               \
-      (slice_object[dim].end - slice_object[dim].start) /                      \
-      slice_object[dim].step;
-
-      SET_UP_NEW_SHAPE;
-      dim++;
-    } break;
-
-    default:
-      break;
-    }
-    fmt++;
-  }
-  if (section == 0) {
-    expected_int(fmt, slice);
-  }
-
-  while (dim < rank(self)) {
-
-    while (section > 0 && section < 3) {
-      assess_section(section, slice_object + dim,
-                     section == 1 ? (ignore_colon ? slice_object[dim].start + 1
-                                                  : shape(self)[dim])
-                                  : 1,
-                     dim, shape(self));
-      section++;
-    }
-    SET_UP_NEW_SHAPE;
-    dim++;
-  }
-
-#undef SET_UP_NEW_SHAPE
-
-  struct LaudVar *new = laud_var(rank(self), new_shape, 0, NULL);
-
-  if (new) {
-    perform_slice(slice_object, (float *)laud_values(new), new_shape,
-                  new_length, self);
-  }
-
-  free(slice_object);
-
-  return new;
-}
-const void *laud_generate_slices(const void *x,
-                                 const char __attribute__((unused)) * fmt,
-                                 ...) {
-  return x;
-}
-LAUDAPI const void *laud_yield(const void *generator) { return generator; }
-
 float laud_rng() {
   static _Thread_local unsigned int seed = 0;
 
@@ -719,8 +530,8 @@ void *laud_minus(const void *a, const void *b) { return init(LaudMinus, a, b); }
 void *laud_product(const void *a, const void *b) {
   return init(LaudProduct, a, b);
 }
-void *laud_qoutient(const void *a, const void *b) {
-  return init(LaudQoutient, a, b);
+void *laud_quotient(const void *a, const void *b) {
+  return init(LaudQuotient, a, b);
 }
 void *laud_matrix_dot(const void *a, const void *b) {
   return init(LaudMatrixDot, a, b);
