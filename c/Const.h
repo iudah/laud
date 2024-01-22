@@ -6,6 +6,11 @@
  */
 #ifndef CONST_H
 #define CONST_H
+
+#include <stddef.h>
+
+#include "Var.h"
+
 /**
  * @var LaudConst
  *
@@ -32,14 +37,17 @@ extern const void *LaudConst,
     *Zero;
 
 /**
- * @brief Function to create a LaudConst object with a specified value.
+ * @brief Create a constant LaudConst object.
  *
- * This function initializes and returns a LaudConst object with the provided
- * value.
+ * @param rank The rank of the LaudConst object.
+ * @param shape An array specifying the shape of the LaudConst object.
+ * @param length The length of the data array.
+ * @param data An array containing the constant values for the LaudConst object.
  *
- * @param value The float value to set for the LaudConst object.
  * @return A pointer to the created LaudConst object.
  */
-void *LaudConst_(float value);
+LAUDAPI void *laud_const(const size_t rank, const size_t *const shape,
+                         const size_t lenght, const float *data)
+    __attribute__((malloc));
 
 #endif
