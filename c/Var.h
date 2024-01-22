@@ -214,7 +214,7 @@ extern const void *LaudProduct;
 /**
  * @brief External object declaration for LaudQuotient.
  */
-extern const void *LaudQoutient;
+extern const void *LaudQuotient;
 
 /**
  * @brief External object declaration for LaudMatrixDot.
@@ -290,8 +290,7 @@ LAUDAPI char *laud_as_string(void *a, char *buffer, size_t limit);
  * @return A pointer to the modified LaudVar object.
  */
 LAUDAPI void *laud_change_dependency(void *self, void *dependency, size_t index)
-    __attribute__((warn_unused_result("result from laud_change_dependency must "
-                                      "be blip()'ed or used somehow")));
+    __attribute__((warn_unused_result));
 
 /**
  * @brief Slice a LaudVar object based on the specified format.
@@ -312,7 +311,18 @@ LAUDAPI void *laud_slice(const void *self, const char *slice_fmt, ...)
  * @param dims An array specifying the dimensions to shuffle.
  * @return A pointer to the shuffled LaudVar object.
  */
-LAUDAPI const void *laud_shuffle(const void *x, size_t n_dim, size_t *dims);
+LAUDAPI void *laud_shuffle(const void *x, size_t n_dim, size_t *dims);
+
+/**
+ * @brief Shuffle the elements of a LaudArray in the same pattern as another
+ * LaudArray.
+ *
+ * @param self      The LaudArray to be shuffled.
+ * @param shuffled  The LaudArray that provides the shuffling pattern.
+ *
+ * @return          A new LaudArray with elements shuffled accordingly.
+ */
+LAUDAPI void *laud_shuffle_like(const void *self, const void *shuffled);
 
 /**
  * @brief Generate slices of a LaudVar object based on the specified format.
