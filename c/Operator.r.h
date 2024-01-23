@@ -8,7 +8,10 @@
 #define OPERATOR_R_H
 
 #include "Var.r.h"
+#include "ds/Queue.h"
 #include "ds/Stack.h"
+
+#define LAUD_OPERATOR_PRIORITY (LAUD_VAR_PRIORITY + 2)
 
 /**
  * @var LaudOperator
@@ -31,11 +34,16 @@ extern const void *LaudOperatorClass;
  * Structure representing the class of LaudOperator with function pointers.
  */
 struct LaudOperatorClass {
-  struct LaudVarClass _; /**< Base LaudVarClass structure. */
-  const void *(*computeDerivative)(
-      const void *self, const void *d_var_d_self,
-      struct LaudQueue *derivatives); /**< Function pointer for computing
-            derivatives of LaudOperator objects. */
+  /**< Base LaudVarClass structure. */
+  struct LaudVarClass _;
+  /**< Function pointer for computing
+             derivatives of LaudOperator objects. */
+  void (*compute_derivative)(const void *self, const void *d_var_d_self,
+                             struct LaudQueue *derivatives);
+  /**< Function pointer to check if an object is a valid
+                        dependency for LaudOperator. */
+  char (*is_a_valid_dependency)(const void *self, void *dependency,
+                                size_t index);
 };
 
 /**
@@ -62,31 +70,35 @@ struct LaudOperator {
 extern const struct LaudOperatorProtected {
 
   /**
-   * @brief Function to retrieve the dependency of a LaudOperator.
+   * @brief Retrieve the dependency stack of a LaudOperator.
    *
    * @param operator A pointer to the LaudOperator object.
    * @return A pointer to the dependency stack of the LaudOperator.
    */
-  const void *(*dependency)(const void *operator);
+  const struct LaudStack *(*dependency)(const void *operator);
 
   /**
-   * @brief Function to reserve space for dependencies in a LaudOperator object.
+   * @brief Reserve space for dependencies in a LaudOperator object.
    *
    * @param self_ A pointer to the LaudOperator object.
    * @param count Number of dependencies to reserve space for.
+   *@return Returns the number of dependencies reserved on success, and 0
+   *        otherwise. A return value of 0 may indicate a failure to allocate
+   *        memory.
    */
   int (*reserve)(void *self_, int count);
 
   /**
-   * @brief Function to push a dependency into a LaudOperator object.
+   * @brief Push a dependency into a LaudOperator object.
    *
    * @param self_ A pointer to the LaudOperator object.
    * @param dependency A pointer to the dependency to be pushed.
+   * @return A pointer to the pushed dependency.
    */
   void *(*push)(void *self_, void *dependency);
 
   /**
-   * @brief Function to check if an object is a LaudOperator.
+   * @brief Check if an object is a LaudOperator.
    *
    * @param self A pointer to the object to be checked.
    * @return 1 if the object is a LaudOperator, 0 otherwise.
@@ -94,40 +106,25 @@ extern const struct LaudOperatorProtected {
   char (*is_operator)(const void *self);
 
   /**
-   * @brief Function to compute the product of two LaudVar objects.
+   * @brief Compute the product of two LaudVar objects.
    *
+   * @param x A pointer to the LaudVar result.
    * @param a A pointer to the first LaudVar.
    * @param b A pointer to the second LaudVar.
-   * @return A pointer to the product of the two LaudVar objects.
    */
-  void *(*update_respect_product)(const void *a, const void *b);
+  void *(*update_respect_product)(const void *x, const void *a, const void *b);
+
   /**
-   * @brief Function to compute the derivative of a LaudOperator object.
+   * @brief Compute the derivative of a LaudOperator object.
    *
    * @param self A pointer to the LaudOperator object.
    * @param d_var_d_self A pointer to the derivative of the object with respect
    * to itself.
    * @param derivatives A queue to store computed derivatives.
-   * @return A pointer to the LaudOperator object.
    */
-  const void *(*ComputeDerivative)(const void *self, const void *d_var_d_self,
-                                   struct LaudQueue *derivatives);
+  void (*compute_derivative)(const void *self, const void *d_var_d_self,
+                             struct LaudQueue *derivatives);
 
 } LaudOperatorProtected;
 
-/**
- * @brief Function to compute the derivative of a LaudOperator object.
- *
- * This function is to be overridden by subclasses to provide custom
- * derivative computation logic.
- *
- * @param self A pointer to the LaudOperator object.
- * @param d_var_d_self A pointer to the derivative of the object with respect
- * to itself.
- * @param derivatives A queue to store computed derivatives.
- * @return A pointer to the LaudOperator object.
- */
-static const void *
-LaudOperator_computeDerivative(const void *self, const void *d_var_d_self,
-                               struct LaudQueue *derivatives);
 #endif
