@@ -192,14 +192,13 @@ static void hashmap_iter_end(void *map_) {
 }
 
 const struct LaudHashMapFn LaudHashMapFn = {
-    .HashMap = create_hash_map,
+    .create_hash_map = create_hash_map,
     .find = find,
     .insert = insert,
     .insert_or_replace = insert_or_replace,
     .replace_key_using_hash = replace_key_with_hash,
     .count = hashmap_count,
-    .del = hashmap_delete,
+    .delete_hash_map = hashmap_delete,
     .iter_start = hashmap_iter_begin,
     .yield = hashmap_iter_next,
     .iter_end = hashmap_iter_end};
-    
