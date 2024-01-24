@@ -5,6 +5,8 @@
 #ifndef HASHMAP_H
 #define HASHMAP_H
 
+#include <stddef.h>
+
 struct LaudHashMap;
 /**
  * @brief Structure containing function pointers for HashMap operations.
@@ -17,7 +19,8 @@ extern const struct LaudHashMapFn {
    * @param count The initial capacity of the HashMap.
    * @return A pointer to the created HashMap.
    */
-  void *(*HashMap)(int count);
+  void *(*create_hash_map)(int count);
+
   /**
    * @brief Find a value in the HashMap using its key and hash.
    *
@@ -41,6 +44,7 @@ extern const struct LaudHashMapFn {
    * exists.
    */
   const void *(*insert)(void *map, const void *key, const void *value);
+
   /**
    * @brief Insert a key-value pair into the HashMap or replace an existing
    * key's value.
@@ -79,21 +83,22 @@ extern const struct LaudHashMapFn {
    * @param map A pointer to the HashMap.
    * @return The number of key-value pairs in the HashMap.
    */
-  const int (*count)(void *map);
+  int (*count)(void *map);
 
   /**
    * @brief Delete the HashMap and its associated resources.
    *
    * @param map A pointer to the HashMap to delete.
    */
-  void (*del)(void *map);
+  void (*delete_hash_map)(void *map);
 
   /**
    * @brief Initialize the iterator to the beginning of the HashMap.
    *
    * @param map A pointer to the HashMap.
+   * @return The number of elements in the HashMap.
    */
-  void (*iter_begin)(void *map);
+  size_t (*iter_start)(void *map);
 
   /**
    * @brief Get the next key-value pair during iteration.
@@ -102,7 +107,15 @@ extern const struct LaudHashMapFn {
    * @return A pointer to the next key-value pair or NULL if the end of the
    * HashMap is reached.
    */
-  void **(*iter_next)(void *map);
+  void **(*yield)(void *map);
+
+  /**
+   * @brief End the iteration over the HashMap.
+   *
+   * @param map A pointer to the HashMap.
+   */
+  void (*iter_end)(void *map);
+
 } LaudHashMapFn;
 
 #endif
