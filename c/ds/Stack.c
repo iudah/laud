@@ -6,116 +6,131 @@
  */
 #include <stdlib.h>
 
-#include "../../../Ubject/Ubject.h"
+#include <Ubject.h>
+
 #include "Stack.h"
-/**
- * Structure representing a stack for storing objects.
- */
+
 struct LaudStack {
-  void **dynamic_array; /**< Dynamic array to store values. */
-  int capacity;         /**< The current capacity of the stack. */
-  int count;            /**< The number of elements in the stack. */
+  void **elements;       /**< Dynamic array to store values. */
+  size_t capacity;       /**< The current capacity of the stack. */
+  size_t size;           /**< The number of elements in the stack. */
+  size_t iterator_index; /**< Index used for iteration. */
 };
-/**
- * @brief Create a LaudStack object with the specified capacity.
- *
- * This function initializes and returns a LaudStack object with the specified
- * initial capacity.
- *
- * @param count The initial capacity of the LaudStack.
- * @return A pointer to the created LaudStack object.
- */
-static void *Stack(int count) {
+
+static void *create_stack(int initial_capacity) {
   struct LaudStack *stack = malloc(sizeof(struct LaudStack));
-  stack->capacity = count;
-  stack->count = 0;
-  stack->dynamic_array = malloc(count * sizeof(void *));
-  if (!stack->dynamic_array)
-    UbjectError.error("Out of memory");
+  if (!stack) {
+    UbjectError.error("create_stack: Out of memory");
+  }
+
+  stack->capacity = initial_capacity;
+  stack->size = 0;
+  stack->elements = malloc(initial_capacity * sizeof(void *));
+  if (!stack->elements)
+    UbjectError.error("create_stack: Out of memory");
+  stack->iterator_index = (size_t)-1;
   return stack;
 }
-/**
- * @brief Delete a LaudStack object.
- *
- * This function deallocates memory and resources associated with a LaudStack
- * object.
- *
- * @param stack A pointer to the LaudStack to be deleted.
- */
-static void del(struct LaudStack *stack) {
-  stack->capacity = stack->count = 0;
-  free(stack->dynamic_array);
-  free(stack);
-}
-/**
- * @brief Push an object onto the LaudStack.
- *
- * This function pushes an object onto the LaudStack.
- *
- * @param stack A pointer to the LaudStack.
- * @param x A pointer to the object to be pushed.
- */
-static void push(struct LaudStack *stack, const void *x) {
-  if (stack->capacity == stack->count) // dynamic array
-  {
-    stack->capacity = stack->capacity ? stack->capacity * 2 : 5;
-    stack->dynamic_array =
-        realloc(stack->dynamic_array, stack->capacity * sizeof(void *));
+
+static void delete_stack(struct LaudStack *stack) {
+  if (stack) {
+    free(stack->elements);
+    stack->elements = NULL;
+    stack->capacity = stack->size = 0;
+    free(stack);
+    stack = NULL;
   }
-  stack->dynamic_array[stack->count] = (void *)x;
-  // reference((void *)x);
-  stack->count++;
 }
 
-/**
- * @brief Pop and remove an object from the LaudStack.
- *
- * This function pops an object from the LaudStack and removes it from the
- * stack.
- *
- * @param stack A pointer to the LaudStack.
- * @return A pointer to the popped object.
- */
-static void *pop(struct LaudStack *stack) {
-  if (!stack->count)
-    // empty stack?
-    return NULL;
+static void push(struct LaudStack *stack, const void *element) {
+  if (stack->capacity == stack->size) // dynamic array
+  {
+    size_t new_capacity = stack->capacity ? stack->capacity * 2 : 5;
+    void **new_elements =
+        realloc(stack->elements, new_capacity * sizeof(void *));
 
-  void *node = stack->dynamic_array[--stack->count];
-  // blip(node);
+    if (!new_elements) {
+      UbjectError.error("push: Out of memory");
+      return;
+    }
+
+    stack->elements = new_elements;
+    stack->capacity = new_capacity;
+  }
+
+  stack->elements[stack->size] = (void *)element;
+  stack->size++;
+}
+
+static void *pop(struct LaudStack *stack) {
+  if (stack->size == 0) {
+    // Stack is empty
+    return NULL;
+  }
+
+  void *node = stack->elements[--stack->size];
 
   return node;
 }
-/**
- * @brief Get the count of objects in the LaudStack.
- *
- * This function returns the number of objects currently stored in the
- * LaudStack.
- *
- * @param stack A pointer to the LaudStack.
- * @return The count of objects in the stack.
- */
-static int count(const struct LaudStack *stack) { return stack->count; }
-/**
- * @brief Peek at an object in the LaudStack at a specific index.
- *
- * This function allows you to access an object at a specific index in the
- * LaudStack without removing it.
- *
- * @param stack A pointer to the LaudStack.
- * @param i The index of the object to peek at.
- * @return A pointer to the object at the specified index.
- */
-static void *peek(const struct LaudStack *stack, int i) {
-  return stack->dynamic_array[i];
+
+static int count(const struct LaudStack *stack) { return stack->size; }
+
+static void *peek(const struct LaudStack *stack, size_t i) {
+  if (i < stack->size) {
+    return stack->elements[i];
+  } else {
+    // Handle out-of-bounds index (e.g., return an error or print a message)
+    return NULL;
+  }
+}
+
+static size_t iter_begin(struct LaudStack *stack) {
+  stack->iterator_index = 0;
+  return stack->size;
+}
+static void *iter_next(struct LaudStack *stack) {
+  if (stack->iterator_index < stack->size) {
+    return peek(stack, stack->iterator_index++);
+  } else {
+    return NULL; // End of iteration
+  }
+}
+
+static void iter_end(struct LaudStack *self) {
+  struct LaudStack *stack = (void *)self;
+  stack->iterator_index = -1;
+}
+
+void *replace_item(struct LaudStack *self, void *item, size_t array_index) {
+  struct LaudStack *this = (void *)self;
+  void *return_value = NULL;
+
+  // Check for NULL item
+  if (item == NULL) {
+    UbjectError.error("replace_item: Item cannot be NULL");
+    return NULL;
+  }
+
+  // Check if array_index is within bounds
+  if (array_index < this->capacity) {
+    return_value = this->elements[array_index];
+    this->elements[array_index] = item;
+  } else {
+    UbjectError.error("replace_item: Index out of bounds");
+  }
+  return return_value;
 }
 
 /**
  * @brief LaudStack function pointers.
  */
-const struct LaudStackFn LaudStackFn = {.Stack = Stack,
-                                        .del = del,
+const struct LaudStackFn LaudStackFn = {.Stack = create_stack,
+                                        .del = delete_stack,
                                         .push = push,
                                         .pop = pop,
                                         .count = count,
-                                        .peek = peek};
+                                        .peek = peek,
+                                        .iter_start = iter_begin,
+                                        .yield = iter_next,
+                                        .iter_end = iter_end,
+                                        .replace_item = replace_item};
