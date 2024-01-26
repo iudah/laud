@@ -3,3 +3,9 @@ build/*
 core
 Makefile_tmp
 ADADEDEJIADEWALE513@GMAIL.COM
+*.exe
+*.dll
+*.a
+*.csv
+*.txt
+Makefile_*
