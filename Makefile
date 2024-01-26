@@ -1,68 +1,77 @@
-TITLE:=laud
-OUT:=$(TITLE)
+OUT         := laud
+SRCDIR		:= ./ $(filter-out build/%, $(wildcard */ */*/ */*/*/))
+OBJDIR		:= $(addprefix build/, $(SRCDIR))
+CSRC		:= $(wildcard $(addsuffix *.c, $(SRCDIR)))
+CXXSRC		:= $(filter-out %/main.cpp, $(wildcard $(addsuffix *.cpp, $(SRCDIR))))
+COBJS		:= $(patsubst %.c, %.o, $(addprefix build/,$(CSRC)))
+CXXOBJS		:= $(patsubst %.cpp, %.o, $(addprefix build/,$(CXXSRC)))
+DEPS		:= $(patsubst %.o, %.o.d, $(COBJS))
+BIN			:= $$HOME/
 
-CC:=gcc
-CFLAGS:=-c -std=c17 -fPIC
-CLDFLAGS:=-L$$HOME -lUbject
-CBUILD:=./build/
-CSRC:= $(wildcard ./c/*.c) $(wildcard ./c/ds/*.c) $(wildcard ./c/operators/*.c)
-CHDR:= $(wildcard ./c/*.h) $(wildcard ./c/ds/*.h) $(wildcard ./c/operators/*.h)
-COBJ:=$(CSRC:%.c=$(CBUILD)%.o)
-LAUD_C:=$$HOME/lib$(OUT)-1.so
+CFLAGS		:= -fPIC -ggdb3 -fno-omit-frame-pointer -fsanitize=address 
+CPPFLAGS	:= -I../Ubject -I../laud
+LDFLAGS		:= -L$$HOME
+LDLIBS		:= -lUbject -l$(OUT)-0 -l$(OUT)-1 -lm
 
-CXX:=g++
-CXXFLAGS:=-c -fPIC
-CXXLDFLAGS:=-L$$HOME -l$(OUT)-1
-CXXBUILD:=./build/
-CXXSRC:=$(wildcard ./cpp/*.cpp)
-CXXHPP:=$(wildcard ./cpp/*.hpp)
-CXXOBJ:=$(CXXSRC:%.cpp=$(CXXBUILD)%.o)
-LAUD_CPP:=$$HOME/lib$(OUT)-2.so
+vpath $(OUT) build/
+vpath %.so build/:../Ubject/build/
 
-IFLAGS:=-I../Ubject
-GFLAGS:= -g -fno-omit-frame-pointer -fsanitize=address 
+.PHONY: all run clean
 
+all : libUbject.so lib$(OUT)-0.so lib$(OUT)-1.so $(OUT);
 
+libUbject.so : $(wildcard $(addprefix ../Ubject, /*.c /*/*.c))
+	@cd ../Ubject && $(MAKE)
 
-ALL: $$HOME/libUbject.so PREBUILD $(LAUD_C) $(LAUD_CPP) APP POSTBUILD
+build/%.o : %.c
+	@$(CC) $(CFLAGS) $(CPPFLAGS) -c -o $@ $< 
+	@echo $@ built
+
+lib$(OUT)-0.so : $(COBJS)
+	@echo building $@
+	@$(CC) -shared -o $$HOME/$@ $^
+	@cp  $$HOME/$@ build/
+	@echo $@ built
+
+build/%.o : %.cpp
+	@$(CXX) $(CFLAGS) $(CPPFLAGS) -c -o $@ $< 
+	@echo $@ built
+
+lib$(OUT)-1.so : $(CXXOBJS)
+	@echo building $@
+	@$(CXX) -shared -o $$HOME/$@ $^
+	@cp  $$HOME/$@ build/
+	@echo $@ built
+
+$(OUT): main.cpp 
+	@echo building $@
+	@$(CXX) $(CFLAGS) $(CPPFLAGS) $(LDFLAGS) $(LDLIBS) -o $$HOME/$@ $<
+	@cp  $$HOME/$@ build/
+	@echo $@ built
+
+build/%.o.d : %.c | build
+	@set -e;\
+	rm -f $@;\
+	$(CC) -MM $(CPPFLAGS) $< > $@.$$$$;\
+	sed 's,\(.*\.o\)[:]*,build/$*.o $@ : ,g' < $@.$$$$ > $@; \
+	rm -f $@.$$$$
+
+build/%.o.d : %.cpp | build
+	@set -e;\
+	rm -f $@;\
+	$(CXX) -MM $(CPPFLAGS) $< > $@.$$$$;\
+	sed 's,\(.*\.o\)[:]*,build/$*.o $@ : ,g' < $@.$$$$ > $@; \
+	rm -f $@.$$$$
+
+build:
+	@mkdir -p build $(OBJDIR)
+
+run : all
 	ASAN_OPTIONS=symbolize=1 ASAN_SYMBOLIZER_PATH=$(shell which llvm-symbolizer) $$HOME/$(OUT)
 
-$$HOME/libUbject.so:
-	cd ../Ubject && make host=termux target=termux
+clean:
+	@cd ../Ubject && $(MAKE) clean
+	@$(RM) -r build
+	@echo build removed
 
-PREBUILD: 
-	mkdir -p $(CBUILD)c $(CBUILD)c/ds $(CBUILD)c/operators $(CXXBUILD)cpp
-
-$(LAUD_C): $(COBJ)  
-	$(CC) $(CLDFLAGS) $(GFLAGS) $^ -o $@ -shared
-
-$(CBUILD)%.o:%.c
-	$(CC) $(CFLAGS) $(GFLAGS) $^ -o $@ 
-
-%.c: $(CHDR)
-
-$(LAUD_CPP): $(CXXOBJ)  
-	$(CXX) $(CXXLDFLAGS) $(GFLAGS) $^ -o $@ -shared
-
-$(CXXBUILD)%.o:%.cpp 
-	$(CXX)  $(CXXFLAGS) $(GFLAGS) $^ -o $@ 
-
-%.cpp: $(CXXHPP)
-
-APP: build/main.o
-	$(CXX) $(CXXLDFLAGS) $(GFLAGS) -l$(OUT)-2 $^ -o $$HOME/$(OUT)
-
-build/main.o: main.cpp
-	$(CXX) $(CXXFLAGS) $(GFLAGS) -g main.cpp -o $@
-
-POSTBUILD:
-	@echo Finished building!
-
-clean: remove_all ALL
-	$$HOME/$(OUT)
-
-remove_all:
-	@rm -r ./build
-	@rm $$HOME/liblaud* $$HOME/laud $$HOME/libUbject.so
-	@echo ./build cleaned
-	@echo
+include $(DEPS)
