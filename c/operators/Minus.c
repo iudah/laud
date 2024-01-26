@@ -1,79 +1,91 @@
 #include <stdarg.h>
 #include <stddef.h>
 
+#include <Ubject.h>
+
 #include "../Const.h"
 #include "../Operator.r.h"
 #include "../Var.h"
 #include "../ds/Queue.h"
 
+#define LAUD_OPERATOR_MINUS_PRIORITY (LAUD_OPERATOR_PRIORITY + 2)
+
 struct LaudMinus {
   struct LaudOperator _;
 };
-static void *LaudMinus_ctor(void *self_, va_list *args) {
-  struct LaudMinus *self = self_;
+
+static void *LaudMinus_ctor(void *instance, va_list *args) {
+  struct LaudMinus *self = init(LaudMinus, instance, args);
+
+  // Declare variables for operands
+  void *operand_a = va_arg(*args, struct LaudVar *),
+       *operand_b = va_arg(*args, struct LaudVar *);
 
   LaudOperatorProtected.reserve(self, 2);
-  LaudOperatorProtected.push(self, va_arg(*args, struct LaudVar *));
-  LaudOperatorProtected.push(self, va_arg(*args, struct LaudVar *));
+  LaudOperatorProtected.push(self, operand_a);
+  LaudOperatorProtected.push(self, operand_b);
 
-  LaudVarProtected.setValue(
-      self, LaudVarProtected.getValue(
-                LaudStackFn.peek(LaudOperatorProtected.dependency(self), 0)) -
-                LaudVarProtected.getValue(LaudStackFn.peek(
-                    LaudOperatorProtected.dependency(self), 0)));
   return self;
 }
 
-static void *LaudMinus_eval(void *self_) {
-  printf("minus\n");
-  return self_;
+static void *LaudMinus_eval(void *instance) {
+  // Get the length of the current instance
+  size_t instance_length = laud_length(instance);
+
+  // Get dependencies from the operator's protected data
+  const struct LaudStack *dependencies =
+      LaudOperatorProtected.dependency(instance);
+
+  float *instance_values = (float *)laud_values(instance);
+
+  LaudStackFn.iter_start((struct LaudStack *)dependencies);
+  const float *const operand_a_values =
+      laud_values(LaudStackFn.yield((struct LaudStack *)dependencies));
+  const float *const b_values =
+      laud_values(LaudStackFn.yield((struct LaudStack *)dependencies));
+  LaudStackFn.iter_end((struct LaudStack *)dependencies);
+
+  for (size_t i = 0; i < instance_length; i++) {
+    instance_values[i] = operand_a_values[i] - b_values[i];
+  }
+
+  return instance;
 }
 
-static const void *
-LaudOperator_computeDerivative(const void *self_, const void *d_var_d_self,
-                               struct LaudQueue *derivatives) {
-  printf("minus: ");
-  void *x1 = LaudStackFn.peek(LaudOperatorProtected.dependency(self_), 0);
-  void *x2 = LaudStackFn.peek(LaudOperatorProtected.dependency(self_), 1);
-  if (d_var_d_self) {
-    if (LaudVarIsContinous(x1)) {
-      LaudQueueFn.enqueue(derivatives, x1);
-      // not multiplying? not creating a new object? use as is? then reference
-      reference((void *)d_var_d_self);
-      LaudQueueFn.enqueue(derivatives, d_var_d_self);
-    }
-    if (LaudVarIsContinous(x2)) {
-      LaudQueueFn.enqueue(derivatives, x2);
-      LaudQueueFn.enqueue(
-          derivatives,
-          LaudOperatorProtected.update_respect_product(MinusOne, d_var_d_self));
-    }
-  } else {
-    if (LaudVarIsContinous(x1)) {
-      LaudQueueFn.enqueue(derivatives, x1);
-      // not multiplying? not creating a new object? use as is? then reference
-      reference((void *)One);
-      LaudQueueFn.enqueue(derivatives, One);
-    }
-    if (LaudVarIsContinous(x2)) {
-      LaudQueueFn.enqueue(derivatives, x2);
-      // not multiplying? not creating a new object? use as is? then reference
-      reference((void *)MinusOne);
-      LaudQueueFn.enqueue(derivatives, MinusOne);
-    }
+static void LaudOperator_computeDerivative(const void *instance,
+                                           const void *d_variable_d_instance,
+                                           struct LaudQueue *derivatives) {
+  // Peek the dependencies
+  void *operand_a =
+      LaudStackFn.peek(LaudOperatorProtected.dependency(instance), 0);
+  void *operand_b =
+      LaudStackFn.peek(LaudOperatorProtected.dependency(instance), 1);
+
+  if (laud_is_continuous(operand_a)) {
+    LaudQueueFn.enqueue(derivatives, operand_a);
+    // not multiplying? not creating a new object? use as is? then reference
+    reference((void *)d_variable_d_instance);
+    LaudQueueFn.enqueue(derivatives, d_variable_d_instance);
   }
-  return self_;
+
+  if (laud_is_continuous(operand_b)) {
+    LaudQueueFn.enqueue(derivatives, operand_b);
+    LaudQueueFn.enqueue(derivatives,
+                        LaudOperatorProtected.update_respect_product(
+                            instance, MinusOne, d_variable_d_instance));
+  }
 }
 
 // initialize library section
 const void *LaudMinus = NULL;
-void __attribute__((constructor(25))) initLaudMinus(void) {
+void __attribute__((constructor(LAUD_OPERATOR_MINUS_PRIORITY)))
+initLaudMinus(void) {
 
   if (!LaudMinus)
     LaudMinus =
         init(LaudOperatorClass, LaudOperator,
              sizeof(struct LaudMinus), // class, parent, size
-             ctor, LaudMinus_ctor, className, "LaudMinus", LaudVarEvaluate,
-             LaudMinus_eval, LaudOperatorProtected.ComputeDerivative,
+             ctor, LaudMinus_ctor, className, "LaudMinus", laud_evaluate,
+             LaudMinus_eval, LaudOperatorProtected.compute_derivative,
              LaudOperator_computeDerivative, NULL);
 }
