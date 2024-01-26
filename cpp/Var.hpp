@@ -1,5 +1,6 @@
 #ifndef VAR_HPP
 #define VAR_HPP
+#include <cstddef>
 #include <iostream>
 
 #include "Derivatives.hpp"
@@ -19,6 +20,7 @@ protected:
 public:
   Var();
   Var(const float value);
+  Var(const float values[]);
   Var(const Var &var);
   ~Var();
 
@@ -36,21 +38,21 @@ public:
    * @param value value to set to
    * @return value
    */
-  float setValue(float value);
+  float setValue(float value, size_t index);
 
   /**
    * @brief Get the Value object
    *
    * @return float value of object
    */
-  float getValue() const;
+  float getValue(size_t index) const;
 
   /**
    * @brief Get the internal handle of object laud-c-object
    *
    * @return laud-c-object
    */
-  const void *getMval() const;
+  const void *getLaudHandle() const;
 
   /**
    * @brief Check if object is a differentiable
@@ -81,7 +83,7 @@ public:
    * differentiated independent variables
    * @param ddx LaudVarDerivativeMap of [independent x, derivatives wrt x] pair
    */
-  friend Laud::Derivatives::Derivatives(Laud::Var *y, int length, void *ddx);
+  friend Laud::Derivatives::Derivatives(void *ddx);
   /**
    * @brief Override stream insertion object
    *

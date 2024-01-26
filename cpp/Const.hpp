@@ -6,6 +6,7 @@
 class Laud::Const : public Laud::Var {
 public:
   Const(const float value);
+  Const(const float values[]);
   Const(Const &var);
   ~Const();
 };

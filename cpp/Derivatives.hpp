@@ -14,7 +14,7 @@ private:
   std::map<const void *, Laud::Var> derivs;
 
 public:
-  Derivatives(Laud::Var *y, int length, void *ddx);
+  Derivatives(void *ddx);
   ~Derivatives();
   Laud::Var &find(Laud::Var &x);
   friend std::ostream &operator<<(std::ostream &o, const Derivatives &d);
