@@ -1,0 +1,2 @@
+CompileFlags:
+    Add: [-xc, -I/data/data/com.termux/files/home/storage/shared/Jay/Projects/Ubject, -Wall, -Wextra]
