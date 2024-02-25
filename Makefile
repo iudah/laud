@@ -1,5 +1,5 @@
 OUT         := laud
-SRCDIR		:= ./ $(filter-out build/%, $(wildcard */ */*/ */*/*/))
+SRCDIR		:= ./ $(filter-out build/%, $(wildcard */ */*/ */*/*/ */*/*/*/ */*/*/*/*/))
 OBJDIR		:= $(addprefix build/, $(SRCDIR))
 CSRC		:= $(wildcard $(addsuffix *.c, $(SRCDIR)))
 CXXSRC		:= $(filter-out %/main.cpp, $(wildcard $(addsuffix *.cpp, $(SRCDIR))))
