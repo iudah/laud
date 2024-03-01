@@ -26,10 +26,7 @@ extern const void *LaudVarClass;
 
 #include "narray.h"
 
-static inline struct laud_narray *evaluate_node(void *node) {
-  const struct laud_var_class *class = classOf(node);
-  return class->evaluate_node(node);
-}
+struct laud_narray *laud_evaluate_var_node(void *node);
 
 static inline struct laud_narray *narray(struct laud_var *node) {
   if (is_laud_narray(node))

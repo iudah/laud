@@ -74,19 +74,19 @@ library_initializer(void) {
   }
   if (!LaudVar) {
     LaudVar = init(LaudVarClass, LaudNode,
-                   sizeof(struct laud_var),         // class parent size
-                   className, "LaudVar",            // class name
-                   evaluate_node, solve_var,        // evaluate_node
-                   ctor, laud_var_ctor,             // constructor
-                   laud_to_string, var_to_string,   // to string
-                   laud_slice, var_slice,           // slice
-                   laud_matrix_dot, var_matrix_dot, // matrix dot
-                   laud_add, var_add,               // addition
-                   laud_relu, var_relu,             // relu
-                   laud_sigmoid, var_sigmoid,       // sigmoid
-                   laud_shape, var_shape,           // shape
-                   laud_rank, var_rank,             // rank
-                   laud_evaluate, var_evaluate,     // evaluate
+                   sizeof(struct laud_var),           // class parent size
+                   className, "LaudVar",              // class name
+                   laud_evaluate_var_node, solve_var, // evaluate_node
+                   ctor, laud_var_ctor,               // constructor
+                   laud_to_string, var_to_string,     // to string
+                   laud_slice, var_slice,             // slice
+                   laud_matrix_dot, var_matrix_dot,   // matrix dot
+                   laud_add, var_add,                 // addition
+                   laud_relu, var_relu,               // relu
+                   laud_sigmoid, var_sigmoid,         // sigmoid
+                   laud_shape, var_shape,             // shape
+                   laud_rank, var_rank,               // rank
+                   laud_evaluate, var_evaluate,       // evaluate
                    //   dtor, laud_var_dtor, // destructor
                    NULL);
   }
@@ -103,9 +103,14 @@ library_initializer(void) {
 
 #define IMPL
 
+struct laud_narray *laud_evaluate_var_node(void *node) {
+  const struct laud_var_class *class = classOf(node);
+  return class->evaluate_node(node);
+}
+
 static void *solve_var(struct laud_var *var) {
   if (!var->value) {
-    UbjectError.error("laud_var (@ %p) has no value", var);
+    UbjectError.error("%s (@ %p) has no value", className(var), var);
   }
   return var->value;
 }
@@ -150,7 +155,7 @@ static void *laud_var_class_ctor(void *self_, va_list *args) {
 
     voidf method = va_arg(arg, voidf);
     if (method) {
-      if (selector == (voidf)evaluate_node)
+      if (selector == (voidf)laud_evaluate_var_node)
         *(voidf *)&self->evaluate_node = method;
     }
   }
@@ -212,7 +217,7 @@ static void *var_slice(const struct laud_var *operand, const char *slice_fmt) {
   struct laud_var *slice = init(LaudSlice, operand, NULL, slice_fmt, NULL);
 
   if (operand->value) {
-    evaluate_node(slice);
+    laud_evaluate_var_node(slice);
   }
 
   return slice;
@@ -225,7 +230,7 @@ static void *var_matrix_dot(const struct laud_var *operand_a,
       init(LaudMatrixDot, operand_a, operand_b, NULL);
 
   if (operand_a->value && operand_b->value) {
-    evaluate_node(dot_product);
+    laud_evaluate_var_node(dot_product);
   }
 
   return dot_product;
@@ -237,7 +242,7 @@ static void *var_add(const struct laud_var *operand_a,
   struct laud_var *addition = init(LaudAdd, operand_a, operand_b, NULL);
 
   if (operand_a->value && operand_b->value) {
-    evaluate_node(addition);
+    laud_evaluate_var_node(addition);
   }
 
   return addition;
@@ -248,7 +253,7 @@ static void *var_relu(const struct laud_var *operand_a) {
   struct laud_var *relu = init(LaudReLU, operand_a, NULL);
 
   if (operand_a->value) {
-    evaluate_node(relu);
+    laud_evaluate_var_node(relu);
   }
 
   return relu;
@@ -259,7 +264,7 @@ static void *var_sigmoid(const struct laud_var *operand_a) {
   struct laud_var *sigmoid = init(LaudSigmoid, operand_a, NULL);
 
   if (operand_a->value) {
-    evaluate_node(sigmoid);
+    laud_evaluate_var_node(sigmoid);
   }
 
   return sigmoid;
@@ -296,7 +301,7 @@ static void var_evaluate(const struct laud_var *var) {
 
     UbjectError.warn("- - - - %p %s", *active_var, className(*active_var));
 
-    evaluate_node(*active_var);
+    laud_evaluate_var_node(*active_var);
 
     ((struct laud_node *)*active_var)->is_visited = 0;
     active_var++;
