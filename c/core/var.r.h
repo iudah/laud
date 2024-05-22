@@ -6,12 +6,17 @@
 
 struct laud_var;
 
-struct laud_var_class {
+struct laud_var_class
+{
   struct laud_node_class _;
   void *(*evaluate_node)(struct laud_var *var);
+  void *(*differentiate_node)(struct laud_var *node_var, uint64_t operand_index,
+                              const struct laud_narray *derivative);
 };
 
-struct laud_var {
+struct laud_var
+{
+
   struct laud_node _;
   struct laud_narray *value;
   struct laud_narray *derivative;
@@ -28,7 +33,13 @@ extern const void *LaudVarClass;
 
 struct laud_narray *laud_evaluate_var_node(void *node);
 
-static inline struct laud_narray *narray(struct laud_var *node) {
+struct laud_narray *
+laud_differentiate_var_node(struct laud_var *node,
+                            uint64_t operand_index,
+                            const struct laud_narray *derivative);
+
+static inline struct laud_narray *narray(struct laud_var *node)
+{
   if (is_laud_narray(node))
     return (struct laud_narray *)node;
   return node->value;

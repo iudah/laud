@@ -1,20 +1,24 @@
-#include <Ubject.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-#include "c/core/base.h"
-#include "var.h"
+#include <Ubject.h>
+
+#define LAUD_VAR_IMPLEMENTATION
 #define NODE_PROTECTED
 #define VAR_PROTECTED
-#include "../math/add.r.h"
-#include "../math/matrix_dot.r.h"
-#include "../math/nn_activations.h"
-#include "../math/relu.r.h"
-#include "../math/sigmoid.r.h"
+#include "../core/base.h"
+#include "../core/var.h"
+#include "../core/var.r.h"
+#include "../math/common/add/add.h"
+#include "../math/common/add/add.xtern.h"
+#include "../math/common/matrix_dot/matrix_dot.h"
+#include "../math/common/matrix_dot/matrix_dot.xtern.h"
+#include "../math/nn/nn.h"
+#include "../math/nn/nn.xtern.h"
+#include "../math/others/reduce.r.h"
 #include "../misc/slice.r.h"
-#include "var.r.h"
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -32,25 +36,27 @@ static void *laud_var_ctor(void *self, va_list *args);
 static void *laud_var_class_ctor(void *self_, va_list *args);
 
 static char *var_to_string(const void *laud_object, char *buffer,
-                           size_t buf_limit);
+                           uint64_t buf_limit);
 
 static void *var_slice(const struct laud_var *operand, const char *slice_fmt);
 
-static void *var_matrix_dot(const struct laud_var *operand_a,
-                            const struct laud_var *operand_b);
+static void *var_reduce(const struct laud_var *operand, uint16_t axis,
+                        float (*callback)(const float current_net,
+                                          const float *const values,
+                                          const void *args),
+                        const void *args, void *null);
 
-static void *var_add(const struct laud_var *operand_a,
-                     const struct laud_var *operand_b);
+static const uint64_t *var_shape(const struct laud_var *var);
 
-static void *var_relu(const struct laud_var *operand_a);
-
-static void *var_sigmoid(const struct laud_var *operand_a);
-
-static const size_t *var_shape(const struct laud_var *var);
-
-static size_t var_rank(const struct laud_var *var);
+static uint16_t var_rank(const struct laud_var *var);
 
 static void var_evaluate(const struct laud_var *var);
+
+static void var_differentiate(struct laud_var *var,
+                              const struct laud_narray *derivative);
+
+static void *differentiate_var(struct laud_var *var, uint64_t index,
+                               struct laud_narray *pre_dx);
 
 #undef STATIC_FUNC_DECL
 
@@ -73,22 +79,28 @@ library_initializer(void) {
                         ctor, laud_var_class_ctor, NULL);
   }
   if (!LaudVar) {
-    LaudVar = init(LaudVarClass, LaudNode,
-                   sizeof(struct laud_var),           // class parent size
-                   className, "LaudVar",              // class name
-                   laud_evaluate_var_node, solve_var, // evaluate_node
-                   ctor, laud_var_ctor,               // constructor
-                   laud_to_string, var_to_string,     // to string
-                   laud_slice, var_slice,             // slice
-                   laud_matrix_dot, var_matrix_dot,   // matrix dot
-                   laud_add, var_add,                 // addition
-                   laud_relu, var_relu,               // relu
-                   laud_sigmoid, var_sigmoid,         // sigmoid
-                   laud_shape, var_shape,             // shape
-                   laud_rank, var_rank,               // rank
-                   laud_evaluate, var_evaluate,       // evaluate
-                   //   dtor, laud_var_dtor, // destructor
-                   NULL);
+    LaudVar = init(
+        LaudVarClass, LaudNode,
+        sizeof(struct laud_var),                        // class parent size
+        className, "LaudVar",                           // class name
+        laud_evaluate_var_node, solve_var,              // evaluate_node
+        ctor, laud_var_ctor,                            // constructor
+        laud_to_string, var_to_string,                  // to string
+        laud_slice, var_slice,                          // slice
+        laud_matrix_dot, var_matrix_dot,                // matrix dot
+        laud_add, var_add,                              // addition
+        laud_relu, var_relu,                            // relu
+        laud_sigmoid, var_sigmoid,                      // sigmoid
+        laud_shape, var_shape,                          // shape
+        laud_rank, var_rank,                            // rank
+        laud_evaluate, var_evaluate,                    // evaluate
+        laud_differentiate, var_differentiate,          // differentiate
+        laud_differentiate_var_node, differentiate_var, // differentiate_node
+        laud_reduce, var_reduce,                        // reduce
+        laud_binary_cross_entropy, var_binary_cross_entropy, // log loss
+        laud_mse, var_mse,                                   // mse
+                           //   dtor, laud_var_dtor, // destructor
+        NULL);
   }
 }
 
@@ -115,31 +127,42 @@ static void *solve_var(struct laud_var *var) {
   return var->value;
 }
 
-static inline void insert_incoming_node(struct laud_node *node,
-                                        struct laud_node *incoming_node,
-                                        size_t *count, size_t *capacity) {
-  printf("%p <= %p\n", node, incoming_node);
-  return insert_node(&node->incoming, incoming_node, count, capacity);
+static void *differentiate_var(struct laud_var *var, uint64_t index,
+                               struct laud_narray *pre_dx) {
+  if (!var->value) {
+    UbjectError.error("%s (@ %p) has no value", className(var), var);
+  }
+  return pre_dx;
 }
-
-static inline void insert_outgoing_node(struct laud_node *node,
-                                        struct laud_node *outgoing_node) {
-  printf("%p <= %p\n", node, outgoing_node);
-  return insert_node(&node->outgoing, outgoing_node, &node->outgoing_count,
-                     &node->outgoing_capacity);
-}
-
 static void *laud_var_ctor(void *self, va_list *args) {
-  size_t count = 0;
-  size_t capacity = 0;
 
   struct laud_node *independent_var = NULL;
-  while ((independent_var = va_arg(*args, void *))) {
+  if ((independent_var = va_arg(*args, void *))) {
 
-    insert_incoming_node(self, independent_var, &count, &capacity);
-    insert_outgoing_node(independent_var, self);
+    // nodes do not have a means to keep track of their incoming node
+    // because this information is only required during their creation
+    // and never used during destructing or anywhere else so we keep
+    // track of the incoming nodes here.
+    uint64_t count = 0;
+    uint64_t capacity = 0;
+
+    struct laud_node *dependent_var = self;
+
+    while (independent_var) {
+
+      // connect nodes dependent_var and independent_var
+      // dependent_var <<== independent_var
+      insert_node(&dependent_var->incoming, independent_var, &count, &capacity,
+                  0);
+
+      // independent_var ==>> dependent_var
+      insert_node(&independent_var->outgoing, dependent_var,
+                  &independent_var->outgoing_count,
+                  &independent_var->outgoing_capacity, 1);
+
+      independent_var = va_arg(*args, void *);
+    }
   }
-
   return self;
 }
 
@@ -156,7 +179,9 @@ static void *laud_var_class_ctor(void *self_, va_list *args) {
     voidf method = va_arg(arg, voidf);
     if (method) {
       if (selector == (voidf)laud_evaluate_var_node)
-        *(voidf *)&self->evaluate_node = method;
+        memcpy(&self->evaluate_node, &method, sizeof(method));
+      if (selector == (voidf)laud_differentiate_var_node)
+        memcpy(&self->differentiate_node, &method, sizeof(method));
     }
   }
 
@@ -172,12 +197,10 @@ void *laud_var() { return init(LaudVar, NULL); }
 void *laud_set_variable_value(void *variable_node, void *value) {
   struct laud_var *variable = variable_node;
 
-  UbjectError.warn("%p %p %p", variable, variable->value, value);
-
   void *old_value;
 
   // if there are no incoming nodes then it is an independent node and its
-  // narray can be changed
+  // narray (value) can be changed
   if (!incoming_nodes(variable)) {
 
     old_value = variable->value;
@@ -186,10 +209,15 @@ void *laud_set_variable_value(void *variable_node, void *value) {
     reference(variable->value);
 
     if (old_value) {
-      blip(variable->value);
+      blip(old_value);
     }
-
   } else {
+
+    UbjectError.warn("node_addr: %p\n"
+                     "node_val:  %p\n"
+                     "new_value: %p",
+                     variable, variable->value, value);
+
     UbjectError.warn(
         "ignored request to change the n-array of dependent (%s) node @ %p",
         className(variable), variable);
@@ -200,7 +228,7 @@ void *laud_set_variable_value(void *variable_node, void *value) {
 }
 
 static char *var_to_string(const void *laud_object, char *buffer,
-                           size_t buf_limit) {
+                           uint64_t buf_limit) {
   const struct laud_var *var = laud_object;
 
   if (var->value) {
@@ -223,54 +251,22 @@ static void *var_slice(const struct laud_var *operand, const char *slice_fmt) {
   return slice;
 }
 
-static void *var_matrix_dot(const struct laud_var *operand_a,
-                            const struct laud_var *operand_b) {
+static void *var_reduce(const struct laud_var *operand, uint16_t axis,
+                        float (*callback)(const float current_net,
+                                          const float *const values,
+                                          const void *args),
+                        const void *args, void *null) {
+  struct laud_var *reduce =
+      init(LaudReduce, operand, axis, callback, args, NULL);
 
-  struct laud_var *dot_product =
-      init(LaudMatrixDot, operand_a, operand_b, NULL);
-
-  if (operand_a->value && operand_b->value) {
-    laud_evaluate_var_node(dot_product);
+  if (operand->value) {
+    laud_evaluate_var_node(reduce);
   }
 
-  return dot_product;
+  return reduce;
 }
 
-static void *var_add(const struct laud_var *operand_a,
-                     const struct laud_var *operand_b) {
-
-  struct laud_var *addition = init(LaudAdd, operand_a, operand_b, NULL);
-
-  if (operand_a->value && operand_b->value) {
-    laud_evaluate_var_node(addition);
-  }
-
-  return addition;
-}
-
-static void *var_relu(const struct laud_var *operand_a) {
-
-  struct laud_var *relu = init(LaudReLU, operand_a, NULL);
-
-  if (operand_a->value) {
-    laud_evaluate_var_node(relu);
-  }
-
-  return relu;
-}
-
-static void *var_sigmoid(const struct laud_var *operand_a) {
-
-  struct laud_var *sigmoid = init(LaudSigmoid, operand_a, NULL);
-
-  if (operand_a->value) {
-    laud_evaluate_var_node(sigmoid);
-  }
-
-  return sigmoid;
-}
-
-static const size_t *var_shape(const struct laud_var *var) {
+static const uint64_t *var_shape(const struct laud_var *var) {
 
   if (var->value) {
     return laud_shape(var->value);
@@ -280,7 +276,7 @@ static const size_t *var_shape(const struct laud_var *var) {
   }
 }
 
-static size_t var_rank(const struct laud_var *var) {
+static uint16_t var_rank(const struct laud_var *var) {
 
   if (var->value) {
     return laud_rank(var->value);
@@ -289,6 +285,7 @@ static size_t var_rank(const struct laud_var *var) {
     return 0;
   }
 }
+
 static void var_evaluate(const struct laud_var *var) {
 
   // list all dependencies
@@ -299,13 +296,56 @@ static void var_evaluate(const struct laud_var *var) {
   struct laud_var **active_var = vars;
   while (active_var && *active_var) {
 
-    UbjectError.warn("- - - - %p %s", *active_var, className(*active_var));
+    UbjectError.warn("Curr. compute node: %p (%s)", *active_var,
+                     className(*active_var));
 
-    laud_evaluate_var_node(*active_var);
+    (*active_var)->value = laud_evaluate_var_node(*active_var);
 
     ((struct laud_node *)*active_var)->is_visited = 0;
     active_var++;
   }
 
   free(vars);
+}
+
+struct laud_narray *
+laud_differentiate_var_node(struct laud_var *node_var, uint64_t respect_index,
+                            const struct laud_narray *derivative) {
+  const struct laud_var_class *class = classOf(node_var);
+
+  return class->differentiate_node(node_var, respect_index, derivative);
+}
+
+static void
+differentiate_in_preorder_manner(struct laud_var *var,
+                                 const struct laud_narray *derivative) {
+  // Note: only perform this operation for LaudVar and not its children class
+  if (classOf(var) == LaudVar) {
+    UbjectError.warn(className(var));
+    var->derivative = derivative_add(var->value, var->derivative, derivative);
+    return;
+  }
+
+  struct laud_var **independent_vars =
+      (struct laud_var **)((struct laud_node *)var)->incoming;
+
+  // preorder for each independent var
+  uint64_t i = 0;
+  while (*independent_vars) {
+    // differentiate
+    struct laud_var *active_var = *independent_vars;
+    struct laud_narray *derivative_wrt_active_var =
+        laud_differentiate_var_node(var, i++, derivative);
+    differentiate_in_preorder_manner(active_var, derivative_wrt_active_var);
+    independent_vars++;
+  }
+}
+
+static void var_differentiate(struct laud_var *var,
+                              const struct laud_narray *derivative) {
+  if (!narray(var)) {
+    UbjectError.error(
+        "derivatives cannot be computed until the graph has been evatuated");
+  }
+  differentiate_in_preorder_manner(var, derivative);
 }
