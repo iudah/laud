@@ -1,6 +1,8 @@
 #ifndef BASE_R_H
 #define BASE_R_H
 
+#include <stdint.h>
+
 #include <TypeClass.r.h>
 #include <Ubject.r.h>
 
@@ -51,7 +53,7 @@ struct laud_base_class {
    * `NULL` on error.
    */
   void *(*to_string)(const void *operand, char *buffer,
-                     const size_t buffer_limit);
+                     const uint64_t buffer_limit);
 
   /**
    * @brief Slices a Laud object based on a given format.
@@ -87,7 +89,7 @@ struct laud_base_class {
    * @param operand The Laud object to retrieve the shape from.
    * @return An array containing the dimensions of the Laud object.
    */
-  size_t *(*shape)(const void *operand);
+  uint64_t *(*shape)(const void *operand);
 
   /**
    * @brief Returns the rank of a Laud object.
@@ -95,7 +97,7 @@ struct laud_base_class {
    * @param operand The Laud object to determine the rank of.
    * @return The rank of the Laud object.
    */
-  size_t (*rank)(const void *operand);
+  uint16_t (*rank)(const void *operand);
 
   /**
    * @brief Evaluates a Laud object.
@@ -104,6 +106,33 @@ struct laud_base_class {
    * @param null Unused parameter (reserved for future use).
    */
   void (*evaluate)(const void *operand, void *null);
+
+  /**
+   * @brief Differentiate a Laud object.
+   *
+   * @param operand The Laud object to differentiate.
+   * @param null Unused parameter (reserved for future use).
+   */
+  void (*differentiate)(const void *operand, const void *pre_derivative,
+                        void *null);
+
+  /**
+   * @brief Reduces a Laud object to a one dimension using a callback.
+   *
+   * @param operand The Laud object to apply the function to.
+   * @param axis The axis or dimension to retain after reduction of Laud object.
+   * @param callback The callback to achieve reduction of Laud object.
+   * @param args Argument and extra data to be passed to callback
+   * @param null Unused parameter (reserved for future use).
+   * @return A new Laud object resulting from applying the function.
+   */
+  void *(*reduce)(const void *operand, uint16_t axis,
+                  float (*callback)(const float current_net,
+                                    const float *const values,
+                                    const void *args),
+                  const void *args, void *null);
+  void *(*binary_cross_entropy)(void *operand_a, void *operand_b, void *null);
+  void *(*mse)(void *operand_a, void *operand_b, void *null);
 };
 
 /**

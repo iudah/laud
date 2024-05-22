@@ -1,8 +1,14 @@
 #include <stdlib.h>
+#include <string.h>
 
 #include <Ubject.h>
 
-#include "../math/nn_activations.h"
+#include "../math/common/add/add.h"
+#include "../math/common/matrix_dot/matrix_dot.h"
+#include "../math/nn/binary_cross_entropy/binary_cross_entropy.h"
+#include "../math/nn/mse/mse.h"
+#include "../math/nn/relu/relu.h"
+#include "../math/nn/sigmoid/sigmoid.h"
 #include "base.h"
 #include "base.r.h"
 
@@ -30,8 +36,9 @@ library_initializer(void) {
                          ctor, laud_base_class_ctor, NULL);
   if (!LaudBase)
     LaudBase = init(LaudBaseClass, Ubject, sizeof(struct laud_base), className,
-                    "LaudBase",              // class name
-                    laud_add, base_operator, // addition
+                    "LaudBase",                 // class name
+                    laud_add, base_operator,    // addition
+                    laud_reduce, base_operator, // reduce
                     NULL);
 }
 
@@ -61,23 +68,31 @@ static void *laud_base_class_ctor(void *self_, va_list *args) {
     voidf method = va_arg(arg, voidf);
     if (method) {
       if (selector == (voidf)laud_to_string)
-        *(voidf *)&self->to_string = method;
+        memcpy(&self->to_string, &method, sizeof(method));
       else if (selector == (voidf)laud_slice)
-        *(voidf *)&self->slice = method;
+        memcpy(&self->slice, &method, sizeof(method));
       else if (selector == (voidf)laud_matrix_dot)
-        *(voidf *)&self->matrix_dot = method;
+        memcpy(&self->matrix_dot, &method, sizeof(method));
       else if (selector == (voidf)laud_add)
-        *(voidf *)&self->add = method;
+        memcpy(&self->add, &method, sizeof(method));
       else if (selector == (voidf)laud_relu)
-        *(voidf *)&self->relu = method;
+        memcpy(&self->relu, &method, sizeof(method));
       else if (selector == (voidf)laud_sigmoid)
-        *(voidf *)&self->sigmoid = method;
+        memcpy(&self->sigmoid, &method, sizeof(method));
       else if (selector == (voidf)laud_shape)
-        *(voidf *)&self->shape = method;
+        memcpy(&self->shape, &method, sizeof(method));
       else if (selector == (voidf)laud_rank)
-        *(voidf *)&self->rank = method;
+        memcpy(&self->rank, &method, sizeof(method));
       else if (selector == (voidf)laud_evaluate)
-        *(voidf *)&self->evaluate = method;
+        memcpy(&self->evaluate, &method, sizeof(method));
+      else if (selector == (voidf)laud_differentiate)
+        memcpy(&self->differentiate, &method, sizeof(method));
+      else if (selector == (voidf)laud_reduce)
+        memcpy(&self->reduce, &method, sizeof(method));
+      else if (selector == (voidf)laud_binary_cross_entropy)
+        memcpy(&self->binary_cross_entropy, &method, sizeof(method));
+      else if (selector == (voidf)laud_mse)
+        memcpy(&self->mse, &method, sizeof(method));
     }
   }
 

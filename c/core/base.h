@@ -22,25 +22,9 @@
  * @brief Header file containing functions for basic operations on Laud objects.
  */
 
+#include <inttypes.h>
 #include <stddef.h>
-
-/**
- * Performs element-wise addition between two Laud objects.
- *
- * @param operand_a The first Laud object.
- * @param operand_b The second Laud object.
- * @return A new Laud object containing the result of the addition.
- */
-LAUDAPI void *laud_add(void *operand_a, void *operand_b);
-
-/**
- * Computes the matrix dot product of two Laud objects.
- *
- * @param operand_a The first Laud object.
- * @param operand_b The second Laud object.
- * @return A new Laud object containing the result of the matrix dot product.
- */
-LAUDAPI void *laud_matrix_dot(void *operand_a, void *operand_b);
+#include <stdint.h>
 
 /**
  * Converts a Laud object to a human-readable string representation.
@@ -50,7 +34,8 @@ LAUDAPI void *laud_matrix_dot(void *operand_a, void *operand_b);
  * @param buf_limit The maximum size of the buffer.
  * @return The buffer containing the string representation.
  */
-LAUDAPI char *laud_to_string(void *laud_object, char *buffer, size_t buf_limit);
+LAUDAPI char *laud_to_string(const void *laud_object, char *buffer,
+                             const uint64_t buf_limit);
 
 /**
  * Extracts a sub-array from a Laud object using a format string.
@@ -68,7 +53,7 @@ LAUDAPI void *laud_slice(const void *self, const char *slice_format, ...)
  * @param laud_array The Laud array to get the shape of.
  * @return A pointer to an array of size_t elements representing the shape.
  */
-LAUDAPI const size_t *laud_shape(void *laud_array)
+LAUDAPI const uint64_t *laud_shape(void *laud_array)
     __attribute__((warn_unused_result));
 
 /**
@@ -77,7 +62,8 @@ LAUDAPI const size_t *laud_shape(void *laud_array)
  * @param laud_array The Laud array to get the rank of.
  * @return The number of dimensions (rank) of the Laud array.
  */
-LAUDAPI size_t laud_rank(void *laud_array) __attribute__((warn_unused_result));
+LAUDAPI uint16_t laud_rank(void *laud_array)
+    __attribute__((warn_unused_result));
 
 /**
  * @brief Evaluates a Laud object.
@@ -85,5 +71,30 @@ LAUDAPI size_t laud_rank(void *laud_array) __attribute__((warn_unused_result));
  * @param laud_array The Laud object to evaluate.
  */
 LAUDAPI void laud_evaluate(void *laud_array);
+
+/**
+ * @brief Differntiate a Laud object.
+ *
+ * @param laud_array The Laud object to differentiate.
+ * @param pre_derivatives Derivatives to continue differentiation with.
+ */
+LAUDAPI void laud_differentiate(void *laud_array, void *pre_derivatives);
+
+/**
+ * Performs element-wise addition between two Laud objects.
+ *
+ * @param operand The Laud object.
+ * @param axis The axis or dimension to retain after reduction of Laud object.
+ * @param callback The callback to achieve reduction of Laud object.
+ * @param args Argument and extra data to be passed to callback
+ * @return A new Laud object containing the result of the reduction. Laud object
+ * has length = 1 when axis = 0, length = shape[axis - 1] when 1 <= axis <=
+ * rank.
+ */
+LAUDAPI void *laud_reduce(void *operand, uint16_t axis,
+                          float (*callback)(const float current_net,
+                                            const float *const values,
+                                            const void *args),
+                          const void *args);
 
 #endif
