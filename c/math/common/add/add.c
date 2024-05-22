@@ -1,8 +1,8 @@
 #include <Ubject.h>
 
-#include "../core/base.h"
 #define NODE_PROTECTED
 #define VAR_PROTECTED
+#include "add.h"
 #include "add.r.h"
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -15,7 +15,8 @@
 #define STATIC_FUNC_DECL
 
 static void *solve_add(struct laud_add *add);
-
+static void *differentiate_add(struct laud_add *add, uint64_t operand_index,
+                               const struct laud_narray *derivative);
 #undef STATIC_FUNC_DECL
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -36,11 +37,13 @@ library_initializer(void) {
     LaudAddClass = LaudVarClass;
   }
   if (!LaudAdd) {
-    LaudAdd = init(LaudAddClass, LaudVar,
-                   sizeof(struct laud_add),  // class parent size
-                   className, "LaudAdd",     // class name
-                   evaluate_node, solve_add, // evaluate_node
-                   NULL);
+    LaudAdd =
+        init(LaudAddClass, LaudVar,
+             sizeof(struct laud_add),           // class parent size
+             className, "LaudAdd",              // class name
+             laud_evaluate_var_node, solve_add, // evaluate_node
+             laud_differentiate_var_node, differentiate_add, // evaluate_node
+             NULL);
   }
 }
 
@@ -55,7 +58,19 @@ library_initializer(void) {
 
 #define IMPL
 
+void *laud_add(void *a, void *b) {
+  const struct laud_base_class *class = classOf(a);
+  return class->add(a, b, NULL);
+}
+
 static void *solve_add(struct laud_add *add) {
   return laud_add(narray((struct laud_var *)incoming_nodes(add)[0]),
                   narray((struct laud_var *)incoming_nodes(add)[1]));
+}
+
+static void *differentiate_add(struct laud_add *add, uint64_t operand_index,
+                               const struct laud_narray *derivative) {
+  return laud_narray_dadd(narray((struct laud_var *)incoming_nodes(add)[0]),
+                          narray((struct laud_var *)incoming_nodes(add)[1]),
+                          operand_index, derivative, narray((void *)add));
 }
