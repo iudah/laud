@@ -8,10 +8,10 @@ CXXOBJS		:= $(patsubst %.cpp, %.o, $(addprefix build/,$(CXXSRC)))
 DEPS		:= $(patsubst %.o, %.o.d, $(COBJS))
 BIN			:= $$HOME/
 
-CFLAGS		:= -fPIC -ggdb3 -fno-omit-frame-pointer -fsanitize=address 
-CPPFLAGS	:= -I../Ubject -I../laud
-LDFLAGS		:= -L$$HOME
-LDLIBS		:= -lUbject -l$(OUT)-0 -l$(OUT)-1 -lm
+CFLAGS		:= -fPIC -ggdb3 -fno-omit-frame-pointer -fsanitize=address -Wall 
+CPPFLAGS	:= -I../Ubject -I../laud -Wall 
+LDFLAGS		:= -L$$HOME 
+LDLIBS		:= -lUbject -l$(OUT)-0 -l$(OUT)-1 -lm 
 
 vpath $(OUT) build/
 vpath %.so build/:../Ubject/build/
