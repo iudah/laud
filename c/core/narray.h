@@ -20,8 +20,9 @@
  * @param data An array containing the values to populate the array with.
  * @return A pointer to the newly created Laud N-dimensional array.
  */
-LAUDAPI void *laud_narray(const size_t rank, const size_t *const shape,
-                          const size_t length, const float *const data)
+LAUDAPI void *laud_narray(const uint16_t rank, const uint64_t *const shape,
+                          const uint64_t prefill_data_length,
+                          const float *const prefill_float_array)
     __attribute__((malloc, warn_unused_result));
 
 /**
@@ -34,9 +35,9 @@ LAUDAPI void *laud_narray(const size_t rank, const size_t *const shape,
  * @return A pointer to the newly created Laud N-dimensional array.
  */
 LAUDAPI void *laud_from_function(
-    float (*generator)(const size_t rank, const size_t *const shape,
-                       const size_t offset, const void *const usr_args),
-    const size_t rank, size_t *shape, const void *usr_args)
+    float (*generator)(const uint16_t rank, const uint64_t *const shape,
+                       const uint64_t offset, const void *const usr_args),
+    const uint16_t rank, uint64_t *shape, const void *usr_args)
     __attribute__((malloc, warn_unused_result));
 
 /**
