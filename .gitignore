@@ -1,3 +1,4 @@
+*.gitignore
 build/*
 .vscode/*
 Makefile_tmp
@@ -9,3 +10,4 @@ ADADEDEJIADEWALE513@GMAIL.COM
 *.txt
 Makefile_*
 *.clangd
+*.diff
