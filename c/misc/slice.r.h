@@ -20,12 +20,12 @@ extern const void *LaudSliceClass;
 #ifdef LAUD_SLICE_IMPL
 
 struct laud_dim_slice_data {
-  size_t start, stop, step, stride;
+  uint64_t start, stop, step, stride;
 };
 
 void *laud___create_slice_data_(const void *array,
                                 const char *const slice_format,
-                                size_t *new_shape, size_t *new_length);
+                                uint64_t *new_shape, uint64_t *new_length);
 
 void *laud___narray_slice_array_(const struct laud_narray *array,
                                  const struct laud_dim_slice_data *slice_data,
@@ -42,10 +42,10 @@ struct laud_slicer {
   const char *slice_format_string;
   struct laud_dim_slice_data *slice_data;
   struct laud_dim_slice_data *current_slice_data;
-  size_t *limit;
-  size_t *current_count;
-  size_t *new_shape;
-  size_t new_length;
+  uint64_t *limit;
+  uint64_t *current_count;
+  uint64_t *new_shape;
+  uint64_t new_length;
 };
 
 #endif
