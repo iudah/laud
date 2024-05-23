@@ -2,6 +2,7 @@
 #include <stdlib.h>
 
 #include "node.r.h"
+#include "node.h"
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -29,22 +30,20 @@ const void *LaudNodeClass = NULL;
 const void *LaudNode = NULL;
 
 static void __attribute__((constructor(LAUD_NODE_PRIORITY)))
-library_initializer(void) {
+library_initializer(void)
+{
 
-  if (!LaudNodeClass) {
+  if (!LaudNodeClass)
+  {
     LaudNodeClass = LaudBaseClass;
   }
 
-  if (!LaudNode) {
+  if (!LaudNode)
+  {
     LaudNode =
         init(LaudNodeClass, LaudBase, sizeof(struct laud_node), className,
              "LaudNode",           // class name
              dtor, laud_node_dtor, // destructor
-             // laud_add, base_operator,        // addition
-             // laud_matrix_dot, base_operator, // matrix dot
-             // laud_to_string, base_operator,  // to string
-             // laud_slice, base_operator,      // slice
-             /*ctor, laud_var_ctor,*/
              NULL);
   }
 }
@@ -60,11 +59,14 @@ library_initializer(void) {
 
 #define IMPL
 
-static void *laud_node_dtor(struct laud_node *self) {
-  size_t i = 0;
+static void *laud_node_dtor(struct laud_node *self)
+{
+  uint64_t i = 0;
 
-  if (self->incoming) {
-    while (self->incoming[i]) {
+  if (self->incoming)
+  {
+    while (self->incoming[i])
+    {
       blip(self->incoming[i++]);
     }
     free(self->incoming);
@@ -72,8 +74,10 @@ static void *laud_node_dtor(struct laud_node *self) {
   }
 
   i = 0;
-  if (self->outgoing) {
-    while (self->outgoing[i]) {
+  if (self->outgoing)
+  {
+    while (self->outgoing[i])
+    {
       blip(self->outgoing[i++]);
     }
     free(self->outgoing);
@@ -81,4 +85,14 @@ static void *laud_node_dtor(struct laud_node *self) {
   }
 
   return super_dtor(LaudNode, self);
+}
+
+void laud_replace_independent_node(void *var_node, uint64_t index,
+                                   void *independent_node)
+{
+  struct laud_node *y_node = var_node;
+  blip(y_node->incoming[index]);
+  y_node->incoming[index] = independent_node;
+  reference(independent_node);
+  //todo: update incoming and outgoing nodes' list
 }
