@@ -9,6 +9,7 @@
 #include "../math/nn/mse/mse.h"
 #include "../math/nn/relu/relu.h"
 #include "../math/nn/sigmoid/sigmoid.h"
+#include "../math/others/user_elementary_fn/user_elementary_fn.h"
 #include "base.h"
 #include "base.r.h"
 
@@ -93,6 +94,10 @@ static void *laud_base_class_ctor(void *self_, va_list *args) {
         memcpy(&self->binary_cross_entropy, &method, sizeof(method));
       else if (selector == (voidf)laud_mse)
         memcpy(&self->mse, &method, sizeof(method));
+      else if (selector == (voidf)laud_user_elementary_fn)
+        memcpy(&self->user_elementary_fn, &method, sizeof(method));
+      else if (selector == (voidf)laud_value_at_offset)
+        memcpy(&self->value_at_offset, &method, sizeof(method));
     }
   }
 

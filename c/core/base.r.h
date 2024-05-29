@@ -6,6 +6,9 @@
 #include <TypeClass.r.h>
 #include <Ubject.r.h>
 
+#include "../core/base.h"
+#include "../math/others/user_elementary_fn/user_elementary_fn.def.h"
+
 // Forward declaration of struct laud_base
 struct laud_base;
 
@@ -127,12 +130,20 @@ struct laud_base_class {
    * @return A new Laud object resulting from applying the function.
    */
   void *(*reduce)(const void *operand, uint16_t axis,
-                  float (*callback)(const float current_net,
-                                    const float *const values,
-                                    const void *args),
+                  number_t (*callback)(const number_t current_net,
+                                       const number_t *const values,
+                                       const void *args),
                   const void *args, void *null);
   void *(*binary_cross_entropy)(void *operand_a, void *operand_b, void *null);
   void *(*mse)(void *operand_a, void *operand_b, void *null);
+  void *(*adam)(void *g, void *m, void *v, void *x, number_t learning_rate,
+                number_t beta1, number_t beta2, number_t epsilon, void *null);
+
+  void *(*user_elementary_fn)(laud_user_elementary_fn_t user_fn,
+                              uint64_t no_of_operands, void **operands,
+                              void *args, void *null);
+
+  number_t (*value_at_offset)(void *holder, uint64_t offset, void *null);
 };
 
 /**

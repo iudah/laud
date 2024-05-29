@@ -26,6 +26,12 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#ifndef LAUD_NUMBER_T
+#define LAUD_NUMBER_T double
+#endif
+
+typedef LAUD_NUMBER_T number_t;
+
 /**
  * Converts a Laud object to a human-readable string representation.
  *
@@ -78,7 +84,7 @@ LAUDAPI void laud_evaluate(void *laud_array);
  * @param laud_array The Laud object to differentiate.
  * @param pre_derivatives Derivatives to continue differentiation with.
  */
-LAUDAPI void laud_differentiate(void *laud_array, void *pre_derivatives);
+LAUDAPI void laud_differentiate(void *laud_array, const void *pre_derivatives);
 
 /**
  * Performs element-wise addition between two Laud objects.
@@ -92,9 +98,11 @@ LAUDAPI void laud_differentiate(void *laud_array, void *pre_derivatives);
  * rank.
  */
 LAUDAPI void *laud_reduce(void *operand, uint16_t axis,
-                          float (*callback)(const float current_net,
-                                            const float *const values,
-                                            const void *args),
+                          number_t (*callback)(const number_t current_net,
+                                               const number_t *const values,
+                                               const void *args),
                           const void *args);
+
+number_t laud_value_at_offset(void *operand, uint64_t offset);
 
 #endif
