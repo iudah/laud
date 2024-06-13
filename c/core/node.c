@@ -1,8 +1,12 @@
 #include <Ubject.h>
+#include <stddef.h>
+#include <stdint.h>
 #include <stdlib.h>
+#include <string.h>
 
-#include "node.r.h"
+#define NODE_PROTECTED
 #include "node.h"
+#include "node.r.h"
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -29,23 +33,24 @@ static void *laud_node_dtor(struct laud_node *self);
 const void *LaudNodeClass = NULL;
 const void *LaudNode = NULL;
 
-static void __attribute__((constructor(LAUD_NODE_PRIORITY)))
-library_initializer(void)
-{
+static void finish_lib() { FREE(LaudNode); }
 
-  if (!LaudNodeClass)
-  {
+static void __attribute__((constructor(LAUD_NODE_PRIORITY)))
+library_initializer(void) {
+
+  if (!LaudNodeClass) {
     LaudNodeClass = LaudBaseClass;
   }
 
-  if (!LaudNode)
-  {
+  if (!LaudNode) {
     LaudNode =
         init(LaudNodeClass, LaudBase, sizeof(struct laud_node), className,
              "LaudNode",           // class name
              dtor, laud_node_dtor, // destructor
              NULL);
   }
+
+  atexit(finish_lib);
 }
 
 #undef CLASS_INIT
@@ -59,28 +64,23 @@ library_initializer(void)
 
 #define IMPL
 
-static void *laud_node_dtor(struct laud_node *self)
-{
+static void *laud_node_dtor(struct laud_node *self) {
   uint64_t i = 0;
 
-  if (self->incoming)
-  {
-    while (self->incoming[i])
-    {
+  if (self->incoming) {
+    while (self->incoming[i]) {
       blip(self->incoming[i++]);
     }
-    free(self->incoming);
+    FREE(self->incoming);
     self->incoming = NULL;
   }
 
   i = 0;
-  if (self->outgoing)
-  {
-    while (self->outgoing[i])
-    {
-      blip(self->outgoing[i++]);
-    }
-    free(self->outgoing);
+  if (self->outgoing) {
+    /*while (self->outgoing[i]) {self->outgoing[i++]=NULL;
+     // blip(self->outgoing[i++]);
+    }*/
+    FREE(self->outgoing);
     self->outgoing = NULL;
   }
 
@@ -88,11 +88,36 @@ static void *laud_node_dtor(struct laud_node *self)
 }
 
 void laud_replace_independent_node(void *var_node, uint64_t index,
-                                   void *independent_node)
-{
+                                   void *independent_node) {
   struct laud_node *y_node = var_node;
-  blip(y_node->incoming[index]);
-  y_node->incoming[index] = independent_node;
-  reference(independent_node);
-  //todo: update incoming and outgoing nodes' list
+  struct laud_node *new_node = independent_node;
+  struct laud_node *old_node = y_node->incoming[index];
+
+  if (new_node == old_node)
+    return;
+
+  y_node->incoming[index] = new_node;
+
+  blip(old_node);
+  reference(new_node);
+
+  insert_node(&new_node->outgoing, y_node, &new_node->outgoing_count,
+              &new_node->outgoing_capacity, 1);
+
+  void **node_array = old_node->outgoing;
+  uint64_t count = old_node->outgoing_count -= 1;
+  int64_t n_left = 0;
+  int64_t n_right = count;
+  void *p_left = node_array[n_left];
+  void *p_right = node_array[n_right];
+
+  if (((void *)y_node) == p_left) {
+    for (uint64_t i = 0; i <= count; i++) {
+      (node_array)[i] = (node_array)[i + 1];
+    }
+  } else if (((void *)y_node) == p_right) {
+    node_array[n_right] = NULL;
+  } else {
+    abort();
+  }
 }

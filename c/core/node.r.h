@@ -33,11 +33,11 @@ static void do_depth_first_traversal(struct laud_node *node,
                                      struct laud_node ***nodes,
                                      uint64_t *capacity, uint64_t *count);
 
-static inline struct laud_node **outgoing_nodes(void *node) {
+static inline struct laud_node **outgoing_nodes(const void *node) {
   return ((struct laud_node *)node)->outgoing;
 }
 
-static inline struct laud_node **incoming_nodes(void *node) {
+static inline struct laud_node **incoming_nodes(const void *node) {
   return ((struct laud_node *)node)->incoming;
 }
 
@@ -63,10 +63,10 @@ static inline void insert_node(struct laud_node ***node_array,
     *capacity = 2;
     *count = 0;
 
-    (*node_array) = malloc(*capacity * sizeof(struct laud_node **));
+    (*node_array) = CALLOC(*capacity, sizeof(struct laud_node **));
 
     (*node_array)[*count] = incoming_node;
-    reference(incoming_node);
+    //reference(incoming_node);
     (*node_array)[++*count] = NULL;
 
     return;
@@ -76,7 +76,7 @@ static inline void insert_node(struct laud_node ***node_array,
     *capacity *= 2;
 
     struct laud_node **tmp =
-        realloc((*node_array), (*capacity) * sizeof(struct laud_node **));
+        REALLOC((*node_array), (*capacity) * sizeof(struct laud_node **));
 
     if (!tmp) {
       UbjectError.error("unable to allocate memory for node array");
@@ -87,12 +87,11 @@ static inline void insert_node(struct laud_node ***node_array,
 
   if (!sort_node) {
 
-    reference(incoming_node);
+    //reference(incoming_node);
 
     (*node_array)[*count] = incoming_node;
     ++*count;
     (*node_array)[*count] = NULL;
-    ++*count;
   } else {
     if (*count == 1) {
 
@@ -105,11 +104,29 @@ static inline void insert_node(struct laud_node ***node_array,
         return;
       }
 
-      reference(incoming_node);
+      //reference(incoming_node);
 
       (*node_array)[++*count] = NULL;
 
       return;
+    }
+
+    int64_t n_left = 0;
+    int64_t n_right = *count - 1;
+    void *p_left = (*node_array)[n_left];
+    void *p_right = (*node_array)[n_right];
+
+    if (((void *)incoming_node) == p_left) {
+      return;
+    } else if (((void *)incoming_node) == p_right) {
+      return;
+    } else if (((void *)incoming_node) < p_left) {
+      for (uint64_t i = *count; i > 0; i--) {
+        (*node_array)[i] = (*node_array)[i - 1];
+      }
+      (*node_array)[0] = incoming_node;
+    } else {
+      abort();
     }
 
     const int64_t position = compute_position(
@@ -134,18 +151,16 @@ static inline void insert_node(struct laud_node ***node_array,
 static inline void **depth_first_traverse(struct laud_node *node) {
   uint64_t capacity = 2;
   uint64_t count = 0;
-  void **nodes = malloc(capacity * sizeof(struct laud_node *));
+  void **nodes = CALLOC(capacity, sizeof(struct laud_node *));
   do_depth_first_traversal(node, (struct laud_node ***)&nodes, &capacity,
                            &count);
 
-  void **tmp = realloc(nodes, sizeof(struct laud_node *) * (count + 1));
+  void **tmp = REALLOC(nodes, sizeof(struct laud_node *) * (count + 1));
   if (tmp) {
     nodes = tmp;
   } else {
     UbjectError.error("not enough memory to do travsersal");
   }
-
-  UbjectError.warn("%" PRIu64 " nodes", count);
 
   nodes[count] = NULL;
 
@@ -170,7 +185,7 @@ static void do_depth_first_traversal(struct laud_node *node,
   if (*capacity <= *count) {
     *capacity *= 2;
 
-    void *tmp = realloc(*nodes, sizeof(struct laud_node *) * *capacity);
+    void *tmp = REALLOC(*nodes, sizeof(struct laud_node *) * *capacity);
     if (tmp) {
       *nodes = tmp;
     } else {
@@ -180,8 +195,6 @@ static void do_depth_first_traversal(struct laud_node *node,
 
   (*nodes)[(*count)++] = node;
   node->is_visited = 1;
-
-  printf("#%" PRIu64 " %p (%s)\n", *count, node, className(node));
 
   return;
 }
