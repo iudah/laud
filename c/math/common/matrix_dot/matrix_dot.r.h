@@ -18,8 +18,8 @@ extern const void *LaudMatrixDotClass;
 
 void *laud_narray_dmatrix_dot(const struct laud_narray *operand_a,
                               const struct laud_narray *operand_b,
-                              uint64_t respect_index,
-                              struct laud_narray *pre_dx,
-                              struct laud_narray *calc_result);
+                              const uint64_t respect_index,
+                            const  struct laud_narray *pre_dx,
+                            const  struct laud_narray *calc_result);
 
 #endif

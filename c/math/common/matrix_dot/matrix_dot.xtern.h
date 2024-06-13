@@ -25,7 +25,7 @@ static void *narray_matrix_dot(const struct laud_narray *operand_a,
   uint64_t common = shape(operand_a)[1];
 
   struct laud_narray *result = laud_narray(2, result_shape, 0, NULL);
-  float *result_values = values(result);
+  number_t *result_values = values(result);
 
   for (uint64_t i = 0; i < result_shape[0]; i++) {
 
@@ -57,23 +57,23 @@ void *laud_narray_dmatrix_dot(const struct laud_narray *operand_a,
 
     derivatives = laud_narray(2, shape_operand, 0, NULL);
 
-    float *derivative_values = values(derivatives);
-    const float *multiplicand_values = values(operand_b);
-    const float *pre_dx_values = values(pre_dx);
+    number_t *derivative_values = values(derivatives);
+    const number_t *multiplicand_values = values(operand_b);
+    const number_t *pre_dx_values = values(pre_dx);
     // i - kk - j i - j
     //  i - jk - j i - k
 
     // const uint64_t common = shape(pre_dx)[1];
 
-    for (uint64_t i = 0; i < shape_operand[0]; i++) {
+    for (uint64_t i = 0; i < shape_pre_dx[0]; i++) {
 
-      for (uint64_t k = 0; k < shape_operand[1]; k++) {
+      for (uint64_t k = 0; k < shape_pre_dx[1]; k++) {
 
-        for (uint64_t j = 0; j < shape_pre_dx[1]; j++) {
+        for (uint64_t j = 0; j < shape_multiplicand[0]; j++) {
 
-          derivative_values[i * shape_operand[1] + k] +=
-              pre_dx_values[i * shape_pre_dx[1] + j] *
-              multiplicand_values[k * shape_multiplicand[1] + j];
+          derivative_values[i * shape_operand[1] + j] +=
+              pre_dx_values[i * shape_pre_dx[1] + k] *
+              multiplicand_values[j * shape_multiplicand[1] + k];
         }
       }
     }
@@ -85,9 +85,9 @@ void *laud_narray_dmatrix_dot(const struct laud_narray *operand_a,
 
     derivatives = laud_narray(2, shape_operand, 0, NULL);
 
-    float *derivative_values = values(derivatives);
-    const float *multiplicand_values = values(operand_a);
-    const float *pre_dx_values = values(pre_dx);
+    number_t *derivative_values = values(derivatives);
+    const number_t *multiplicand_values = values(operand_a);
+    const number_t *pre_dx_values = values(pre_dx);
     // i - kk - j i - j
     //  i - jk - j i - k
 
@@ -95,13 +95,13 @@ void *laud_narray_dmatrix_dot(const struct laud_narray *operand_a,
 
     for (uint64_t i = 0; i < shape_pre_dx[0]; i++) {
 
-      for (uint64_t k = 0; k < shape_operand[0]; k++) {
+      for (uint64_t k = 0; k < shape_pre_dx[1]; k++) {
 
-        for (uint64_t j = 0; j < shape_operand[1]; j++) {
+        for (uint64_t j = 0; j < shape_multiplicand[1]; j++) {
 
-          derivative_values[k * shape_operand[1] + j] +=
-              pre_dx_values[i * shape_pre_dx[1] + j] *
-              multiplicand_values[i * shape_multiplicand[1] + k];
+          derivative_values[j * shape_operand[1] + k] +=
+              pre_dx_values[i * shape_pre_dx[1] + k] *
+              multiplicand_values[i * shape_multiplicand[1] + j];
         }
       }
     }

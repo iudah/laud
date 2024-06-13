@@ -1,4 +1,5 @@
 #include <Ubject.h>
+#include <stdio.h>
 
 #define NODE_PROTECTED
 #define VAR_PROTECTED
@@ -16,7 +17,7 @@
 
 static void *solve_matrix_dot(struct laud_matrix_dot *matrix_dot);
 static void *differentiate_matrix_dot(struct laud_matrix_dot *matrix_dot,
-                                      uint64_t operand_index,
+                                      const uint64_t operand_index,
                                       const struct laud_narray *derivative);
 #undef STATIC_FUNC_DECL
 
@@ -28,6 +29,8 @@ static void *differentiate_matrix_dot(struct laud_matrix_dot *matrix_dot,
 //////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #define CLASS_INIT
+
+static void finish_lib();
 
 const void *LaudMatrixDot = NULL;
 const void *LaudMatrixDotClass = NULL;
@@ -49,7 +52,11 @@ library_initializer(void) {
              //  dtor, laud_matrix_dot_dtor,        // destrutor
              NULL);
   }
+
+  atexit(finish_lib);
 }
+
+static void finish_lib() { FREE(LaudMatrixDot); }
 
 #undef CLASS_INIT
 
@@ -74,13 +81,11 @@ static void *differentiate_matrix_dot(struct laud_matrix_dot *matrix_dot,
   return laud_narray_dmatrix_dot(
       narray((struct laud_var *)incoming_nodes(matrix_dot)[0]),
       narray((struct laud_var *)incoming_nodes(matrix_dot)[1]), operand_index,
-      derivative, narray(matrix_dot));
+      derivative, narray((const void *)matrix_dot));
 }
 
 void *laud_matrix_dot(void *a, void *b) {
   const struct laud_base_class *class = classOf(a);
-
-  UbjectError.warn("| %s @ %s |", className(a), className(b));
 
   return class->matrix_dot(a, b, NULL);
 }
