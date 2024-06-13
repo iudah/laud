@@ -18,7 +18,7 @@ extern const void *LaudReLUClass;
 
 void *laud_narray_drelu(const struct laud_narray *operand_a,
                         uint64_t __attribute__((__unused__)) respect_index,
-                        struct laud_narray *pre_dx,
-                        struct laud_narray *calc_result);
+                        const struct laud_narray *pre_dx,
+                        const struct laud_narray *calc_result);
 
 #endif

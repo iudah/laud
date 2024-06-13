@@ -7,7 +7,7 @@ static void *narray_relu(const struct laud_narray *operand_a) {
 
   struct laud_narray *result =
       laud_narray(rank(operand_a), shape(operand_a), 0, NULL);
-  float *result_values = values(result);
+  number_t *result_values = values(result);
 
   for (uint64_t i = 0; i < length(result); i++) {
 
@@ -25,7 +25,7 @@ void *laud_narray_drelu(const struct laud_narray *operand_a,
 
   struct laud_narray *derivative =
       laud_narray(rank(operand_a), shape(operand_a), 0, NULL);
-  float *derivative_values = values(derivative);
+  number_t *derivative_values = values(derivative);
 
   for (uint64_t i = 0; i < length(derivative); i++) {
     derivative_values[i] =
