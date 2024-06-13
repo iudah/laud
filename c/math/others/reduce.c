@@ -31,6 +31,8 @@ static void *differentiate_reduce(struct laud_reduce *reduce,
 
 #define CLASS_INIT
 
+static void finish_lib();
+
 const void *LaudReduce = NULL;
 const void *LaudReduceClass = NULL;
 
@@ -48,8 +50,11 @@ library_initializer(void) {
                       differentiate_reduce, // differentiate_node
                       NULL);
   }
+
+  atexit(finish_lib);
 }
 
+static void finish_lib() { FREE(LaudReduce); }
 #undef CLASS_INIT
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////

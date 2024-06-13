@@ -3,16 +3,14 @@
 
 #include "../../core/var.r.h"
 
-struct laud_reduce_class
-{
+struct laud_reduce_class {
   struct laud_var_class _;
 };
 
-struct laud_reduce
-{
+struct laud_reduce {
   struct laud_var _;
-  float (*callback)(const float current_net, const float *const values,
-                    const void *args);
+  number_t (*callback)(const number_t current_net, const number_t *const values,
+                       const void *args);
   void *args;
   int16_t axis;
 };
