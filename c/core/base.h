@@ -23,6 +23,7 @@
  */
 
 #include <inttypes.h>
+#include <mem_lk.h>
 #include <stddef.h>
 #include <stdint.h>
 

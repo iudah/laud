@@ -30,6 +30,11 @@ static void *base_operator();
 const void *LaudBaseClass = NULL;
 const void *LaudBase = NULL;
 
+static void finish_lib() {
+  FREE(LaudBase);
+  FREE(LaudBaseClass);
+}
+
 static void __attribute__((constructor(LAUD_BASE_PRIORITY)))
 library_initializer(void) {
   if (!LaudBaseClass)
@@ -41,6 +46,8 @@ library_initializer(void) {
                     laud_add, base_operator,    // addition
                     laud_reduce, base_operator, // reduce
                     NULL);
+
+  atexit(finish_lib);
 }
 
 #undef CLASS_INIT
