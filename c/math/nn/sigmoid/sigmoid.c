@@ -1,6 +1,5 @@
 #include <Ubject.h>
 
-
 #define NODE_PROTECTED
 #define VAR_PROTECTED
 #include "sigmoid.r.h"
@@ -17,7 +16,7 @@
 static void *solve_sigmoid(struct laud_sigmoid *sigmoid);
 
 static void *differentiate_sigmoid(struct laud_sigmoid *sigmoid,
-                                   uint64_t operand_index,
+                                   const uint64_t operand_index,
                                    const struct laud_narray *derivative);
 
 #undef STATIC_FUNC_DECL
@@ -34,6 +33,8 @@ static void *differentiate_sigmoid(struct laud_sigmoid *sigmoid,
 const void *LaudSigmoid = NULL;
 const void *LaudSigmoidClass = NULL;
 
+static void fini_sigm();
+
 static void __attribute__((constructor(LAUD_SIGMOID_PRIORITY)))
 library_initializer(void) {
   if (!LaudSigmoidClass) {
@@ -48,6 +49,12 @@ library_initializer(void) {
                        differentiate_sigmoid, // differentiate_node
                        NULL);
   }
+  
+  atexit(fini_sigm);
+}
+
+static void fini_sigm(){
+    FREE(LaudSigmoid);
 }
 
 #undef CLASS_INIT
@@ -73,9 +80,9 @@ static void *solve_sigmoid(struct laud_sigmoid *sigmoid) {
 }
 
 static void *differentiate_sigmoid(struct laud_sigmoid *sigmoid,
-                                   uint64_t operand_index,
+                                   const uint64_t operand_index,
                                    const struct laud_narray *derivative) {
   return laud_narray_dsigmoid(
       narray((struct laud_var *)incoming_nodes(sigmoid)[0]), operand_index,
-      derivative, narray(sigmoid));
+      derivative, narray((struct laud_var *)sigmoid));
 }

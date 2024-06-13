@@ -17,7 +17,8 @@ extern const void *LaudSigmoid;
 extern const void *LaudSigmoidClass;
 
 void *laud_narray_dsigmoid(const struct laud_narray *operand_a,
-                           uint64_t respect_index, struct laud_narray *pre_dx,
-                           struct laud_narray *calc_result);
+                           const uint64_t respect_index,
+                           const struct laud_narray *pre_dx,
+                           const struct laud_narray *calc_result);
 
 #endif
