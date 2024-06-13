@@ -3,9 +3,15 @@
 
 #ifdef LAUD_NARRAY_IMPLEMENTATION
 
-static void *narray_binary_cross_entropy(const struct laud_narray *operand_a,
-                                         const struct laud_narray *operand_b) {
-  if (rank(operand_a) > 2 || rank(operand_b) > 2) {
+#define EPSILON (1.175494351E-34)
+
+static inline number_t clamp(number_t x, number_t lo, number_t hi) {
+  return x < lo ? lo : x > hi ? hi : x;
+}
+
+static void *narray_binary_cross_entropy(const struct laud_narray *forecast,
+                                         const struct laud_narray *truth) {
+  if (rank(forecast) > 2 || rank(truth) > 2) {
     UbjectError.error("is log loss not limited to 2-d arrays? please contact "
                       "me on olaolujude@gmail.com to explain it. thanks.");
   }
@@ -18,48 +24,53 @@ static void *narray_binary_cross_entropy(const struct laud_narray *operand_a,
   };
 
   element_broadcast((struct laud_element_broadcast *)&broadcast_element,
-                    operand_a, operand_b);
+                    forecast, truth);
 
   void *broadcast_shape___ = broadcast_element.shape;
 
   if (!broadcast_shape___) {
-    uint16_t rank_ = rank(operand_a);
-    uint64_t *shape_ = shape(operand_a);
-    uint64_t lenght_ = length(operand_a);
+    uint64_t *shape_ = shape(forecast);
+    uint64_t lenght_ = length(forecast);
 
     uint64_t one = 1;
 
     struct laud_narray *result = laud_narray(one, &one, 0, NULL);
-    float *result_values = values(result);
+    number_t *result_values = values(result);
 
     for (uint64_t i = 0; i < lenght_; i++) {
 
-      float y = values(operand_a)[i];
-      float p = values(operand_b)[i];
+      number_t y = values(truth)[i];
+      number_t p = values(forecast)[i];
+      if (p == 0)
+        p = values(forecast)[i] = EPSILON;
+      if (p > 1. || p <= 0 || y > 1. || y < 0) {
+        UbjectError.error("Please normalize BCE operands to [0,1]");
+      }
       // Todo: use the following formula for categorical cross entropy:
-      //  result_values[i] += (values(operand_a)[i]*
-      //  log(values(operand_b)[i]));
-      result_values[0] += -y * log(p) - (1 - y) * log(1 - p);
+      //  result_values[i] += (values(forecast)[i]*
+      //  log(values(truth)[i]));
+      result_values[0] += -y * (number_t)log(p + EPSILON) -
+                          (1. - y) * (number_t)log(1. - p + EPSILON);
     }
     result_values[0] /= shape_[0];
 
-    // free(shape_);
+    // FREE(shape_);
 
     return result;
   } else {
-    uint16_t rank_a = rank(operand_a);
-    uint16_t rank_b = rank(operand_b);
+    uint16_t rank_a = rank(forecast);
+    uint16_t rank_b = rank(truth);
     uint16_t rank_bc = broadcast_element.rank;
 
-    uint64_t *shape_a = shape(operand_a);
-    uint64_t *shape_b = shape(operand_b);
+    uint64_t *shape_a = shape(forecast);
+    uint64_t *shape_b = shape(truth);
 
     uint64_t one = 1;
 
     struct laud_narray *result =
         laud_narray_bc(one, &one, 0, NULL, broadcast_element.multiplier_a,
                        broadcast_element.multiplier_b);
-    float *result_values = values(result);
+    number_t *result_values = values(result);
 
     uint64_t length_bc = length(result);
 
@@ -94,10 +105,14 @@ static void *narray_binary_cross_entropy(const struct laud_narray *operand_a,
             broadcast_element.multiplier_b[rank_b - j] * index[rank_bc - j];
       }
 
-      float y = values(operand_a)[index_a];
-      float p = values(operand_b)[index_b];
+      number_t p = values(forecast)[index_a];
+      number_t y = values(truth)[index_b];
+      if (p > 1. || p < 0 || y > 1. || y < 0) {
+        UbjectError.error("Please normalize BCE operands to [0,1]");
+      }
 
-      result_values[0] = result_values[0] += -y * log(p) - (1 - y) * log(1 - p);
+      result_values[0] += -y * (number_t)log(p + EPSILON) -
+                          (1. - y) * (number_t)log(1. - p + EPSILON);
 
       index[broadcast_element.rank - 1]++;
       int16_t index_dim = broadcast_element.rank - 1;
@@ -110,17 +125,17 @@ static void *narray_binary_cross_entropy(const struct laud_narray *operand_a,
       }
     }
     result_values[0] /= broadcast_element.shape[0];
+
     return result;
   }
 }
-void *laud_narray_dbinary_cross_entropy(const struct laud_narray *operand_a,
-                                        const struct laud_narray *operand_b,
+void *laud_narray_dbinary_cross_entropy(const struct laud_narray *forecast,
+                                        const struct laud_narray *truth,
                                         uint64_t respect_index,
                                         struct laud_narray *pre_dx,
                                         struct laud_narray *calc_result) {
 
-  const struct laud_narray *operand =
-      respect_index == 0 ? operand_a : operand_b;
+  const struct laud_narray *operand = respect_index == 0 ? forecast : truth;
 
   uint16_t rank_operand = rank(operand);
 
@@ -129,15 +144,13 @@ void *laud_narray_dbinary_cross_entropy(const struct laud_narray *operand_a,
   struct laud_narray *derivatives =
       laud_narray(rank_operand, shape_operand, 0, NULL);
 
-  float *derivative_values = values(derivatives);
-  const float *const pre_dx_values = pre_dx ? values(pre_dx) : NULL;
+  number_t *derivative_values = values(derivatives);
+  const number_t *const pre_dx_values = pre_dx ? values(pre_dx) : NULL;
 
   uint64_t length_operand = length(operand);
 
   if (classOf(calc_result) == LaudNArrayBroadcast) {
     UbjectError.error("differentiation of broadcasted bce not implemented");
-
-    UbjectError.warn("bc!");
 
     uint64_t *multiplier_a_bc_rank =
         ((struct laud_narray_bc *)calc_result)->multiplier_a;
@@ -147,8 +160,13 @@ void *laud_narray_dbinary_cross_entropy(const struct laud_narray *operand_a,
     uint64_t *multiplier =
         respect_index == 0 ? multiplier_a_bc_rank : multiplier_b_bc_shape;
 
-    uint16_t rank_a = rank(operand_a);
-    uint16_t rank_b = rank(operand_b);
+    uint16_t rank_a = rank(forecast);
+    uint16_t rank_b = rank(truth);
+
+    const void *bc_det = rank_a > rank_b                        ? forecast
+                         : rank_a < rank_b                      ? truth
+                         : shape(forecast)[0] > shape(truth)[0] ? forecast
+                                                                : truth;
 
     uint16_t rank_bc = (uint16_t)multiplier_a_bc_rank[rank_a];
     uint64_t length_broadcast = multiplier_a_bc_rank[rank_a + 1];
@@ -170,12 +188,14 @@ void *laud_narray_dbinary_cross_entropy(const struct laud_narray *operand_a,
         }
       }
 
-      float y = values(operand_a)[offset];
-      float p = values(operand_b)[offset];
+      number_t p = values(forecast)[offset];
+      number_t y = values(truth)[offset];
       derivative_values[offset] =
-          (pre_dx ? pre_dx_values[0] : 1) * (respect_index == 1
-                                                 ? (-y / p + (1 - y) / (1 - p))
-                                                 : log((1 - p) / p));
+          (pre_dx ? pre_dx_values[0] : 1.) *
+          (respect_index == 0
+               ? (-y / (p + EPSILON) + (1. - y) / (1. - p + EPSILON))
+               : (number_t)log((1. - p + EPSILON) / (p + EPSILON))) /
+          shape(bc_det)[0];
 
       index[rank_bc - 1]++;
       int16_t index_dim = rank_bc - 1;
@@ -187,20 +207,27 @@ void *laud_narray_dbinary_cross_entropy(const struct laud_narray *operand_a,
         }
       }
     }
+
   } else {
 
     for (uint64_t i = 0; i < length_operand; i++) {
 
-      float y = values(operand_a)[i];
-      float p = values(operand_b)[i];
-      derivative_values[i] = (pre_dx ? pre_dx_values[0] : 1) *
-                             (respect_index == 1 ? (-y / p + (1 - y) / (1 - p))
-                                                 : log((1 - p) / p));
+      number_t p = values(forecast)[i];
+      number_t y = values(truth)[i];
+
+      derivative_values[i] =
+          (pre_dx ? pre_dx_values[0] : 1.) *
+          (respect_index == 0
+               ? (-y / (p + EPSILON) + (1. - y) / (1. - p + EPSILON))
+               : (number_t)log((1. - p + EPSILON) / (p + EPSILON))) /
+          shape(forecast)[0];
     }
   }
 
   return derivatives;
 }
+
+#undef EPSILON
 
 #endif
 
@@ -208,12 +235,11 @@ void *laud_narray_dbinary_cross_entropy(const struct laud_narray *operand_a,
 
 #include "../../../math/nn/binary_cross_entropy/binary_cross_entropy.r.h"
 
-static void *var_binary_cross_entropy(const struct laud_var *operand_a,
-                                      const struct laud_var *operand_b) {
-  struct laud_var *bce =
-      init(LaudBinaryCrossEntropy, operand_a, operand_b, NULL);
+static void *var_binary_cross_entropy(const struct laud_var *forecast,
+                                      const struct laud_var *truth) {
+  struct laud_var *bce = init(LaudBinaryCrossEntropy, forecast, truth, NULL);
 
-  if (operand_a->value && operand_b->value) {
+  if (forecast->value && truth->value) {
     laud_evaluate_var_node(bce);
   }
 

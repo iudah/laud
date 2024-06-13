@@ -3,6 +3,6 @@
 
 #include "../../../core/base.h"
 
-LAUDAPI void *laud_binary_cross_entropy(void *operand_a, void *operand_b);
+LAUDAPI void *laud_binary_cross_entropy(void *guess, void *truth);
 
 #endif

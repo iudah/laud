@@ -31,7 +31,7 @@ static void *differentiate_binary_cross_entropy(
 //////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #define CLASS_INIT
-
+static void fini_bce();
 const void *LaudBinaryCrossEntropy = NULL;
 const void *LaudBinaryCrossEntropyClass = NULL;
 
@@ -50,6 +50,11 @@ library_initializer(void) {
         differentiate_binary_cross_entropy, // differentiate_node
         NULL);
   }
+atexit(fini_bce);
+}
+
+static void fini_bce(){
+    FREE(LaudBinaryCrossEntropy);
 }
 
 #undef CLASS_INIT
@@ -63,9 +68,9 @@ library_initializer(void) {
 
 #define IMPL
 
-void *laud_binary_cross_entropy(void *operand_a, void *operand_b) {
-  const struct laud_base_class *class = classOf(operand_a);
-  return class->binary_cross_entropy(operand_a, operand_b, NULL);
+void *laud_binary_cross_entropy(void *forecast, void *truth) {
+  const struct laud_base_class *class = classOf(forecast);
+  return class->binary_cross_entropy(forecast, truth, NULL);
 }
 
 static void *solve_binary_cross_entropy(

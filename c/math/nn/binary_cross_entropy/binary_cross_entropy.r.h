@@ -16,7 +16,7 @@ struct laud_binary_cross_entropy {
 extern const void *LaudBinaryCrossEntropy;
 extern const void *LaudBinaryCrossEntropyClass;
 
-void *laud_narray_dbinary_cross_entropy(void *operand_a, void *operand_b,
+void *laud_narray_dbinary_cross_entropy(void *forecast, void *truth,
                                         uint64_t respect_index,
                                         const struct laud_narray *pre_dx,
                                         struct laud_narray *calc_result);
