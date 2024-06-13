@@ -3,6 +3,6 @@
 
 #include "../../../core/base.h"
 
-LAUDAPI void *laud_mse(void *operand_a, void *operand_b);
+LAUDAPI void *laud_mse(void *guess, void *truth);
 
 #endif

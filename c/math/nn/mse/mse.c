@@ -1,6 +1,5 @@
 #include <Ubject.h>
 
-
 #define NODE_PROTECTED
 #define VAR_PROTECTED
 #include "../../../core/d_narray.r.h"
@@ -33,7 +32,7 @@ static void *differentiate_mse(struct laud_mse *mse, uint64_t operand_index,
 
 const void *LaudMSE = NULL;
 const void *LaudMSEClass = NULL;
-
+static void fini_mse();
 static void __attribute__((constructor(LAUD_MSE_PRIORITY)))
 library_initializer(void) {
   if (!LaudMSEClass) {
@@ -48,6 +47,11 @@ library_initializer(void) {
                    differentiate_mse, // differentiate_node
                    NULL);
   }
+atexit(fini_mse);
+}
+
+static void fini_mse(){
+    FREE(LaudMSE);
 }
 
 #undef CLASS_INIT
@@ -71,9 +75,10 @@ static void *solve_mse(struct laud_mse *mse) {
                   narray((struct laud_var *)incoming_nodes(mse)[1]));
 }
 
-static void *differentiate_mse(struct laud_mse *mse, uint64_t operand_index,
+static void *differentiate_mse(struct laud_mse *mse,
+                               const uint64_t operand_index,
                                const struct laud_narray *derivative) {
   return laud_narray_dmse(narray((struct laud_var *)incoming_nodes(mse)[0]),
                           narray((struct laud_var *)incoming_nodes(mse)[1]),
-                          operand_index, derivative, narray(mse));
+                          operand_index, derivative, narray((const void *)mse));
 }
