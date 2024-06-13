@@ -8,10 +8,15 @@ CXXOBJS		:= $(patsubst %.cpp, %.o, $(addprefix build/,$(CXXSRC)))
 DEPS		:= $(patsubst %.o, %.o.d, $(COBJS))
 BIN			:= $$HOME/
 
-CFLAGS		:= -fPIC -ggdb3 -fno-omit-frame-pointer -fsanitize=address -Wall 
-CPPFLAGS	:= -I../Ubject -I../laud -Wall 
-LDFLAGS		:= -L$$HOME 
-LDLIBS		:= -lUbject -l$(OUT)-0 -l$(OUT)-1 -lm 
+CFLAGS		:= -fPIC -ggdb3 -O0 -fno-omit-frame-pointer -fsanitize=address
+CPPFLAGS	:= -I../Ubject -I../laud -I../mem_lk -Wall 
+LDFLAGS		:= -L$$HOME -L$$HOME/libbacktrace/.libs/
+LDLIBS		:= -lmem_lk -lUbject -l$(OUT)-0 -l$(OUT)-1 -lm 
+
+
+ifeq ($(check),leaks)
+CPPFLAGS	:= $(CPPFLAGS) -DIU_MEM_LK
+endif
 
 vpath $(OUT) build/
 vpath %.so build/:../Ubject/build/
@@ -29,7 +34,7 @@ build/%.o : %.c
 
 lib$(OUT)-0.so : $(COBJS)
 	@echo building $@
-	@$(CC) -shared -o $$HOME/$@ $^
+	@$(CC) $(LDFLAGS) $(LDLIBS) -shared -o $$HOME/$@ $^
 	@cp  $$HOME/$@ build/
 	@echo $@ built
 
@@ -39,7 +44,7 @@ build/%.o : %.cpp
 
 lib$(OUT)-1.so : $(CXXOBJS)
 	@echo building $@
-	@$(CXX) -shared -o $$HOME/$@ $^
+	@$(CXX) $(LDFLAGS) $(LDLIBS) -shared -o $$HOME/$@ $^
 	@cp  $$HOME/$@ build/
 	@echo $@ built
 
