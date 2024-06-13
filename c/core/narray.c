@@ -1,4 +1,5 @@
 #include <errno.h>
+#include <math.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -15,12 +16,15 @@
 #include "../core/base.r.h"
 #include "../core/narray.h"
 #include "../core/narray.r.h"
+#include "../core/narray_bc.r.h"
 #include "../math/common/add/add.h"
 #include "../math/common/add/add.xtern.h"
 #include "../math/common/matrix_dot/matrix_dot.h"
 #include "../math/common/matrix_dot/matrix_dot.xtern.h"
 #include "../math/nn/nn.h"
 #include "../math/nn/nn.xtern.h"
+#include "../math/others/user_elementary_fn/user_elementary_fn.h"
+#include "../math/others/user_elementary_fn/user_elementary_fn.xtern.h"
 #include "../misc/slice.r.h"
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -35,9 +39,9 @@
 static void laud_configure_narray(void *laud_handle, const uint16_t rank,
                                   const uint64_t *const shape,
                                   const uint64_t length,
-                                  const float *const data);
+                                  const number_t *const data);
 
-static float simple_rng();
+static number_t simple_rng();
 
 static inline char *get_line(FILE *f, uint64_t *string_length);
 
@@ -63,7 +67,7 @@ static inline void fill_slice_data_for_dimension(
     char *ignore_colon);
 
 static void apply_slice(const struct laud_dim_slice_data *slice_object,
-                        float *dest_values, const uint64_t *new_shape,
+                        number_t *dest_values, const uint64_t *new_shape,
                         const uint64_t new_length,
                         const struct laud_narray *const unsliced_src);
 
@@ -72,7 +76,7 @@ static void apply_effective_slice(
     const struct laud_dim_slice_data *slice, const uint64_t dst_cum_offset,
     const uint64_t src_cum_offset, const uint64_t dst_dim_multiplier,
     const uint64_t src_dim_multiplier, const uint64_t *const dst_shape,
-    const uint64_t *const src_shape, float *dest, const float *const src);
+    const uint64_t *const src_shape, number_t *dest, const number_t *const src);
 
 static void *narray_relu(const struct laud_narray *operand_a);
 
@@ -82,9 +86,9 @@ static void *narray_binary_cross_entropy(const struct laud_narray *operand_a,
                                          const struct laud_narray *operand_b);
 
 static void *narray_reduce(const void *operand, uint16_t axis,
-                           float (*callback)(const float current_net,
-                                             const float *const values,
-                                             const void *args),
+                           number_t (*callback)(const number_t current_net,
+                                                const number_t *const values,
+                                                const void *args),
                            const void *args, void *null);
 
 static void *narray_mse(const struct laud_narray *operand_a,
@@ -94,6 +98,13 @@ static void evaluate(const struct laud_narray *operand);
 
 static void differentiate(const struct laud_narray *operand,
                           const struct laud_narray *pre_dydx);
+
+static inline void
+element_n_broadcast(struct laud_element_n_broadcast *broadcast,
+                    const struct laud_narray **operands,
+                    const uint64_t no_of_operands);
+
+static number_t value_at_offset(void *narray_, uint64_t offset);
 
 #undef STATIC_FUNC_DECL
 
@@ -108,31 +119,38 @@ static void differentiate(const struct laud_narray *operand,
 
 const void *LaudNArray;
 
+static void finish_lib() { FREE(LaudNArray); }
+
 static void __attribute__((constructor(LAUD_NARRAY_PRIORITY)))
 library_initializer(void) {
 
   if (!LaudNArray) {
-    LaudNArray =
-        init(LaudBaseClass, LaudBase,
-             sizeof(struct laud_narray),         // class  parent size
-             ctor, laud_narray_ctor,             // constructor
-             dtor, narray_dtor,                  //  destructor
-             className, "LaudNArray",            // class name
-             laud_to_string, narray_as_string,   // to string
-             laud_slice, narray_slice,           // slice
-             laud_matrix_dot, narray_matrix_dot, // matrix dot
-             laud_add, narray_add,               // addition
-             laud_relu, narray_relu,             // relu
-             laud_sigmoid, narray_sigmoid,       // sigmoid
-             laud_shape, shape,                  // shape
-             laud_rank, rank,                    // rank
-             laud_evaluate, evaluate,            // evaluate
-             laud_differentiate, differentiate,  // differentiate
-             laud_reduce, narray_reduce,         // reduce
-             laud_binary_cross_entropy, narray_binary_cross_entropy, // log loss
-             laud_mse, narray_mse,                                   // mse
-             NULL);
+    LaudNArray = init(LaudBaseClass, LaudBase,
+                      sizeof(struct laud_narray),         // class  parent size
+                      ctor, laud_narray_ctor,             // constructor
+                      dtor, narray_dtor,                  //  destructor
+                      className, "LaudNArray",            // class name
+                      laud_to_string, narray_as_string,   // to string
+                      laud_slice, narray_slice,           // slice
+                      laud_matrix_dot, narray_matrix_dot, // matrix dot
+                      laud_add, narray_add,               // addition
+                      laud_relu, narray_relu,             // relu
+                      laud_sigmoid, narray_sigmoid,       // sigmoid
+                      laud_shape, shape,                  // shape
+                      laud_rank, rank,                    // rank
+                      laud_evaluate, evaluate,            // evaluate
+                      laud_differentiate, differentiate,  // differentiate
+                      laud_reduce, narray_reduce,         // reduce
+                      laud_binary_cross_entropy,
+                      narray_binary_cross_entropy, // log loss
+                      laud_mse, narray_mse,        // mse
+                      laud_user_elementary_fn,
+                      narray_user_elementary_fn, // user_elementary_fn
+                      laud_value_at_offset, value_at_offset, //
+                      NULL);
   }
+
+  atexit(finish_lib);
 }
 
 #undef CLASS_INIT
@@ -148,9 +166,9 @@ library_initializer(void) {
 
 void *laud_narray(const uint16_t rank, const uint64_t *const shape,
                   const uint64_t prefill_data_length,
-                  const float *const prefill_float_array) {
-  struct laud_narray *narray =
-      init(LaudNArray, rank, shape, prefill_data_length, prefill_float_array);
+                  const number_t *const prefill_number_t_array) {
+  struct laud_narray *narray = init(
+      LaudNArray, rank, shape, prefill_data_length, prefill_number_t_array);
   if (!narray) {
     // Handle memory allocation failure.
     UbjectError.error("laud_narray: memory allocation failed.\n");
@@ -167,7 +185,7 @@ static void *laud_narray_ctor(void *self, va_list *args) {
 
   const uint64_t length = va_arg(*args, uint64_t);
 
-  const float *const data = va_arg(*args, const float *const);
+  const number_t *const data = va_arg(*args, const number_t *const);
 
   if (length != 0 && data == NULL) {
     UbjectError.error("laud_narray: data(NULL)-length(%" PRIu64 ") mismatch",
@@ -183,12 +201,12 @@ static void *laud_narray_ctor(void *self, va_list *args) {
 static void laud_configure_narray(void *laud_handle, const uint16_t rank,
                                   const uint64_t *const shape,
                                   const uint64_t length,
-                                  const float *const data) {
+                                  const number_t *const data) {
 
   struct laud_narray *narray = laud_handle;
 
   narray->rank = rank;
-  narray->shape = malloc(rank * sizeof(uint64_t));
+  narray->shape = CALLOC(rank, sizeof(uint64_t));
   if (narray->shape == NULL) {
     UbjectError.error("laud_configure_narray: memory allocation failed.\n");
   }
@@ -200,7 +218,7 @@ static void laud_configure_narray(void *laud_handle, const uint16_t rank,
   }
 
   // set up values' holder
-  narray->values = malloc(narray->length * sizeof(float));
+  narray->values = CALLOC(narray->length, sizeof(number_t));
   if (narray->values == NULL) {
     UbjectError.error("laud_configure_var: memory allocation failed.\n");
   }
@@ -217,18 +235,18 @@ static void laud_configure_narray(void *laud_handle, const uint16_t rank,
 static void *narray_dtor(void *self) {
   struct laud_narray *narray = self;
 
-  free(narray->values);
-  free(narray->shape);
+  FREE(narray->values);
+  FREE(narray->shape);
   blip(narray->computation_node);
 
-  UbjectError.warn("destroyed %s data @ %p\n", className(narray), narray);
+  // UbjectError.warn("destroyed %s data @ %p\n", className(narray), narray);
 
   return super_dtor(LaudNArray, narray);
 }
 
 void *laud_from_function(
-    float (*generator)(const uint16_t rank, const uint64_t *const shape,
-                       const uint64_t offset, const void *const usr_args),
+    number_t (*generator)(const uint16_t rank, const uint64_t *const shape,
+                          const uint64_t offset, const void *const usr_args),
     const uint16_t rank, uint64_t *shape, const void *usr_args) {
   if (!generator) {
     typedef void(voidf)();
@@ -261,15 +279,22 @@ void *laud_from_function(
   return narray;
 }
 
-float simple_rng() {
-  static _Thread_local unsigned int seed = 0;
+static _Thread_local unsigned int seed = 0;
+number_t simple_rng() {
 
   if (!seed) {
     seed = (unsigned int)time(NULL);
+    srand(101017);
   }
 
-  srand(seed);
-  return (rand() / (float)RAND_MAX);
+  // srand(seed);
+  // return 0.0195132;
+  // return 0.0495132;
+  return 0.0595132;
+  // return 0.0795132;
+  // return 0.1;
+  //         ((0.085132 - 0.0095132) * (((number_t)rand()) /
+  //         (number_t)RAND_MAX));
 }
 
 void *laud_from_text(const char *file_path, const char *delim) {
@@ -288,7 +313,7 @@ void *laud_from_text(const char *file_path, const char *delim) {
   uint64_t data_shape[] = {1, 1};
   struct laud_narray *narray = laud_narray(data_rank, data_shape, 0, NULL);
 
-  float *data = narray->values;
+  number_t *data = narray->values;
 
   int row = 0, col = 0;
   uint64_t string_length;
@@ -302,7 +327,7 @@ void *laud_from_text(const char *file_path, const char *delim) {
 
       if (data_length == data_capacity) {
         data_capacity *= 2;
-        float *temp = realloc(data, data_capacity * sizeof(float));
+        number_t *temp = REALLOC(data, data_capacity * sizeof(number_t));
         if (temp == NULL) {
           fclose(txt);
           UbjectError.error(
@@ -328,7 +353,7 @@ void *laud_from_text(const char *file_path, const char *delim) {
   fclose(txt);
 
   if (data_length < data_capacity) {
-    float *temp = realloc(data, data_length * sizeof(float));
+    number_t *temp = REALLOC(data, data_length * sizeof(number_t));
     if (temp == NULL) {
       UbjectError.error(
           "laud_from_text: memory allocation failed after parsing");
@@ -361,7 +386,7 @@ static char *get_line(FILE *f, uint64_t *string_length) {
   if (!string) {
     // Allocate initial buffer if it's the first read
     capacity = 256;
-    string = malloc(capacity * sizeof(char));
+    string = CALLOC(capacity, sizeof(char));
 
     if (string == NULL) {
       // Handle memory allocation failure
@@ -373,7 +398,7 @@ static char *get_line(FILE *f, uint64_t *string_length) {
     if (length == (capacity - 1)) {
       // Expand buffer when reaching capacity
       capacity *= 2;
-      char *temp = realloc(string, capacity * sizeof(char));
+      char *temp = REALLOC(string, capacity * sizeof(char));
       if (temp == NULL) {
         return NULL; // Memory reallocation failure
       }
@@ -401,7 +426,7 @@ static char *narray_as_string(const void *laud_object, char *buffer,
   const struct laud_narray *narray_instance = laud_object;
 
   uint64_t col = shape(narray_instance)[rank(narray_instance) - 1];
-  const float *const data = values(narray_instance);
+  const number_t *const data = values(narray_instance);
   uint64_t data_length = length(narray_instance);
   uint64_t length = data_length <= 100 ? data_length : 100;
   uint64_t back = 0, rear = 0;
@@ -470,7 +495,7 @@ void *laud___create_slice_data_(const void *array,
   const uint64_t *array_shape = shape(array);
 
   struct laud_dim_slice_data *slice_object =
-      malloc(sizeof(struct laud_dim_slice_data) * array_rank);
+      CALLOC(sizeof(struct laud_dim_slice_data), array_rank);
 
   if (!slice_object) {
     UbjectError.error(
@@ -527,8 +552,8 @@ void *laud___create_slice_data_(const void *array,
   if (current_section == 0) {
     report_expected_integer_error(format_cursor, slice_format);
   }
-  // current_dimension will still be less than array_rank. This while loop will
-  // remedy that and complete the shape
+  // current_dimension will still be less than array_rank. This while loop
+  // will remedy that and complete the shape
   while (current_dimension < rank(array)) {
     fill_slice_data_for_dimension(array, slice_object, new_length, new_shape,
                                   &current_dimension, &current_section,
@@ -627,14 +652,14 @@ void *laud___narray_slice_array_(const struct laud_narray *array,
                                  struct laud_narray *sliced_array) {
 
   // Apply the slice operation
-  apply_slice(slice_data, (float *)values(sliced_array), shape(sliced_array),
+  apply_slice(slice_data, (number_t *)values(sliced_array), shape(sliced_array),
               length(sliced_array), array);
 
   return sliced_array;
 }
 
 static void apply_slice(const struct laud_dim_slice_data *slice_object,
-                        float *dest_values, const uint64_t *new_shape,
+                        number_t *dest_values, const uint64_t *new_shape,
                         const uint64_t new_length,
                         const struct laud_narray *const unsliced_src) {
   const uint64_t *shape_of_self = shape(unsliced_src);
@@ -644,12 +669,15 @@ static void apply_slice(const struct laud_dim_slice_data *slice_object,
                         shape_of_self, dest_values, values(unsliced_src));
 }
 
-static void apply_effective_slice(
-    const uint16_t rank, const uint16_t dim,
-    const struct laud_dim_slice_data *slice, const uint64_t dst_cum_offset,
-    const uint64_t src_cum_offset, const uint64_t dst_dim_multiplier,
-    const uint64_t src_dim_multiplier, const uint64_t *const dst_shape,
-    const uint64_t *const src_shape, float *dest, const float *const src) {
+static void apply_effective_slice(const uint16_t rank, const uint16_t dim,
+                                  const struct laud_dim_slice_data *slice,
+                                  const uint64_t dst_cum_offset,
+                                  const uint64_t src_cum_offset,
+                                  const uint64_t dst_dim_multiplier,
+                                  const uint64_t src_dim_multiplier,
+                                  const uint64_t *const dst_shape,
+                                  const uint64_t *const src_shape,
+                                  number_t *dest, const number_t *const src) {
   if (rank != dim) {
 
     uint64_t j = 0;
@@ -707,8 +735,8 @@ derivative_add(struct laud_narray *var, struct laud_narray *sum_of_derivatives,
       // broadcast occured
       new_sum_of_derivatives = laud_narray(rank(var), shape(var), 0, NULL);
 
-      float *values_Edv = values(new_sum_of_derivatives);
-      float *values_dv = values(derivative_wrt_var);
+      number_t *values_Edv = values(new_sum_of_derivatives);
+      number_t *values_dv = values(derivative_wrt_var);
 
       uint16_t rank_var = rank(var);
       uint16_t rank_dv = rank(derivative_wrt_var);
@@ -748,17 +776,34 @@ derivative_add(struct laud_narray *var, struct laud_narray *sum_of_derivatives,
       }
     }
   } else {
-    UbjectError.error("Unexpected variation in size. Contact developers.");
+
+    number_t *derivative_values = values(sum_of_derivatives);
+    if (length(sum_of_derivatives) != length(derivative_wrt_var)) {
+      // We are taking the assumption that any pair of derivatives with
+      // different length have to be broadcast because once a variable is
+      // broadcasted, its length changes no matter how little the broadcast
+      // e.g (1, 2) may broadcast to (2, 2), the derivatives retain this
+      // information
+      UbjectError.error("Unexpected variation in lengths. Contact developers.");
+    } else {
+      for (uint64_t i = 0; i < length(sum_of_derivatives); i++) {
+        derivative_values[i] += values(derivative_wrt_var)[i];
+      }
+    }
+    new_sum_of_derivatives = sum_of_derivatives;
   }
   return new_sum_of_derivatives;
 }
 
-static void *narray_reduce(const void *operand, uint16_t axis,
-                           float (*callback)(const float current_net,
-                                             const float *const values,
-                                             const void *args),
-                           const void *args, void *null) {
+static void *narray_reduce(__attribute__((unused)) const void *operand,
+                           __attribute__((unused)) uint16_t axis,
+                           __attribute__((unused)) number_t (*callback)(
+                               const number_t current_net,
+                               const number_t *const values, const void *args),
+                           __attribute__((unused)) const void *args,
+                           __attribute__((unused)) void *null) {
   UbjectError.error("sorry cannot reduce your array atm");
+  return NULL;
 }
 
 char is_laud_narray(const void *laud_object) {
@@ -789,4 +834,8 @@ static void differentiate(const struct laud_narray *operand,
     UbjectError.error("computation node is NULL");
   }
   return laud_differentiate(operand->computation_node, pre_dydx);
+}
+
+static number_t value_at_offset(void *narray_, uint64_t offset) {
+  return values((narray_))[offset];
 }

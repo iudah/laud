@@ -14,8 +14,7 @@
 /**
  * @brief Represents an N-dimensional array in Laud.
  */
-struct laud_narray
-{
+struct laud_narray {
 
 #ifndef LAUD_NARRAY_IMPLEMENTATION
   /* Private members to simulate encapsulation */
@@ -23,7 +22,7 @@ struct laud_narray
 
 #endif
     struct laud_base _; /**< Base structure for Laud objects */
-    float *values;      /**< Pointer to the array of values */
+    number_t *values;   /**< Pointer to the array of values */
     uint64_t *shape;    /**< Pointer to the array specifying the dimensions */
     uint64_t length;    /**< Total number of elements in the array */
     uint16_t rank;      /**< Number of dimensions (rank) of the array */
@@ -42,8 +41,7 @@ struct laud_narray
  * @param narray The N-dimensional array.
  * @return The rank of the array.
  */
-static inline uint16_t rank(const struct laud_narray *narray)
-{
+static inline uint16_t rank(const struct laud_narray *narray) {
   return narray->rank;
 }
 
@@ -53,8 +51,7 @@ static inline uint16_t rank(const struct laud_narray *narray)
  * @param narray The N-dimensional array.
  * @return A pointer to the array of dimensions.
  */
-static inline uint64_t *shape(const struct laud_narray *narray)
-{
+static inline uint64_t *shape(const struct laud_narray *narray) {
   return narray->shape;
 }
 
@@ -64,8 +61,7 @@ static inline uint64_t *shape(const struct laud_narray *narray)
  * @param narray The N-dimensional array.
  * @return The total number of elements in the array.
  */
-static inline uint64_t length(const struct laud_narray *narray)
-{
+static inline uint64_t length(const struct laud_narray *narray) {
   return narray->length;
 }
 
@@ -75,8 +71,7 @@ static inline uint64_t length(const struct laud_narray *narray)
  * @param narray The N-dimensional array.
  * @return A pointer to the array of values.
  */
-static inline float *values(const struct laud_narray *narray)
-{
+static inline number_t *values(const struct laud_narray *narray) {
   return narray->values;
 }
 
