@@ -37,7 +37,7 @@ struct laud_narray_bc {
 extern const void *LaudNArrayBroadcast; /**< Pointer to LaudNArray */
 
 void *laud_narray_bc(const uint16_t rank, const uint64_t *const shape,
-                     const uint64_t length, const float *const data,
+                     const uint64_t length, const number_t *const data,
                      const uint64_t *const multiplier_a,
                      const uint64_t *const multiplier_b)
     __attribute__((malloc, warn_unused_result));
@@ -63,12 +63,12 @@ static inline void element_broadcast(struct laud_element_broadcast *broadcast,
   int16_t dim_bc = broadcast->rank = dim_a > dim_b ? dim_a : dim_b;
 
   uint64_t *shape_bc = broadcast->shape =
-      malloc(broadcast->rank * sizeof(uint64_t));
+      CALLOC(broadcast->rank, sizeof(uint64_t));
 
   uint64_t *multiplier_a = broadcast->multiplier_a =
-      malloc(rank(operand_a) * sizeof(uint64_t));
+      CALLOC(rank(operand_a), sizeof(uint64_t));
   uint64_t *multiplier_b = broadcast->multiplier_b =
-      malloc(rank(operand_b) * sizeof(uint64_t));
+      CALLOC(rank(operand_b), sizeof(uint64_t));
 
   int8_t discard_broadcast = 1;
 
@@ -93,7 +93,7 @@ static inline void element_broadcast(struct laud_element_broadcast *broadcast,
         } else if (shape(operand_b)[dim_b] == 1) {
           shape_bc[dim_bc] = shape(operand_a)[dim_a];
         } else {
-          free(shape_bc);
+          FREE(shape_bc);
           UbjectError.error(
               "operands are not compatible for elementary operation");
         }
@@ -116,9 +116,9 @@ static inline void element_broadcast(struct laud_element_broadcast *broadcast,
     }
   }
   if (dim_a == dim_b && discard_broadcast) {
-    free(shape_bc);
-    free(multiplier_a);
-    free(multiplier_b);
+    FREE(shape_bc);
+    FREE(multiplier_a);
+    FREE(multiplier_b);
     shape_bc = broadcast->shape = broadcast->multiplier_a =
         broadcast->multiplier_b = NULL;
     dim_bc = broadcast->rank = 0;

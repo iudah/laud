@@ -36,6 +36,8 @@ static void *narray_bc_dtor(void *self);
 
 const void *LaudNArrayBroadcast;
 
+static void finish_lib() { FREE(LaudNArrayBroadcast); }
+
 static void __attribute__((constructor(LAUD_NARRAY_BC_PRIORITY)))
 library_initializer(void) {
 
@@ -48,6 +50,8 @@ library_initializer(void) {
              className, "LaudNArrayBroadcast", // class name
              NULL);
   }
+
+  atexit(finish_lib);
 }
 
 #undef CLASS_INIT
@@ -62,7 +66,7 @@ library_initializer(void) {
 #define IMPL
 
 void *laud_narray_bc(const uint16_t rank, const uint64_t *const shape,
-                     const uint64_t data_src_length, const float *const data,
+                     const uint64_t data_src_length, const number_t *const data,
                      const uint64_t *const multiplier_a,
                      const uint64_t *const multiplier_b) {
   struct laud_narray_bc *narray_bc =
@@ -78,8 +82,8 @@ void *laud_narray_bc(const uint16_t rank, const uint64_t *const shape,
 static void *laud_narray_bc_ctor(void *self, va_list *args) {
   struct laud_narray_bc *this = super_ctor(LaudNArrayBroadcast, self, args);
 
-  this->multiplier_a = va_arg(*args, const uint64_t *const);
-  this->multiplier_b = va_arg(*args, const uint64_t *const);
+  this->multiplier_a = va_arg(*args, uint64_t *);
+  this->multiplier_b = va_arg(*args, uint64_t *);
 
   return this;
 }
@@ -88,14 +92,14 @@ static void *narray_bc_dtor(void *self) {
   struct laud_narray_bc *narray = self;
 
   if (narray->multiplier_a) {
-    free(narray->multiplier_a);
+    FREE(narray->multiplier_a);
   }
 
   if (narray->multiplier_b) {
-    free(narray->multiplier_b);
+    FREE(narray->multiplier_b);
   }
 
-  UbjectError.warn("destroyed %s data @ %p\n", className(narray), narray);
+  // UbjectError.warn("destroyed %s data @ %p\n", className(narray), narray);
 
   return super_dtor(LaudNArrayBroadcast, narray);
 }
