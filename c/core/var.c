@@ -1,4 +1,5 @@
 #include <stdarg.h>
+#include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -18,6 +19,8 @@
 #include "../math/nn/nn.h"
 #include "../math/nn/nn.xtern.h"
 #include "../math/others/reduce.r.h"
+#include "../math/others/user_elementary_fn/user_elementary_fn.h"
+#include "../math/others/user_elementary_fn/user_elementary_fn.xtern.h"
 #include "../misc/slice.r.h"
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -33,6 +36,8 @@ static void *solve_var(struct laud_var *var);
 
 static void *laud_var_ctor(void *self, va_list *args);
 
+static void *laud_var_dtor(void *self);
+
 static void *laud_var_class_ctor(void *self_, va_list *args);
 
 static char *var_to_string(const void *laud_object, char *buffer,
@@ -41,9 +46,9 @@ static char *var_to_string(const void *laud_object, char *buffer,
 static void *var_slice(const struct laud_var *operand, const char *slice_fmt);
 
 static void *var_reduce(const struct laud_var *operand, uint16_t axis,
-                        float (*callback)(const float current_net,
-                                          const float *const values,
-                                          const void *args),
+                        number_t (*callback)(const number_t current_net,
+                                             const number_t *const values,
+                                             const void *args),
                         const void *args, void *null);
 
 static const uint64_t *var_shape(const struct laud_var *var);
@@ -58,6 +63,8 @@ static void var_differentiate(struct laud_var *var,
 static void *differentiate_var(struct laud_var *var, uint64_t index,
                                struct laud_narray *pre_dx);
 
+static number_t value_at_offset(void *operand, uint64_t offset);
+
 #undef STATIC_FUNC_DECL
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -71,6 +78,11 @@ static void *differentiate_var(struct laud_var *var, uint64_t index,
 
 const void *LaudVar = NULL;
 const void *LaudVarClass = NULL;
+
+static void finish_lib() {
+  FREE(LaudVar);
+  FREE(LaudVarClass);
+}
 
 static void __attribute__((constructor(LAUD_VAR_PRIORITY)))
 library_initializer(void) {
@@ -99,9 +111,14 @@ library_initializer(void) {
         laud_reduce, var_reduce,                        // reduce
         laud_binary_cross_entropy, var_binary_cross_entropy, // log loss
         laud_mse, var_mse,                                   // mse
-                           //   dtor, laud_var_dtor, // destructor
+        laud_user_elementary_fn,
+        var_user_elementary_fn,                // uefn
+        laud_value_at_offset, value_at_offset, //
+        dtor, laud_var_dtor,                   // destructor
         NULL);
   }
+
+  atexit(finish_lib);
 }
 
 #undef CLASS_INIT
@@ -117,7 +134,14 @@ library_initializer(void) {
 
 struct laud_narray *laud_evaluate_var_node(void *node) {
   const struct laud_var_class *class = classOf(node);
-  return class->evaluate_node(node);
+
+  struct laud_var *var = node;
+  void *result = class->evaluate_node(node);
+  if (var->value && result != var->value) {
+    blip(var->value);
+  }
+
+  return var->value = result;
 }
 
 static void *solve_var(struct laud_var *var) {
@@ -136,7 +160,7 @@ static void *differentiate_var(struct laud_var *var, uint64_t index,
 }
 static void *laud_var_ctor(void *self, va_list *args) {
 
-  struct laud_node *independent_var = NULL;
+  struct laud_var *independent_var = NULL;
   if ((independent_var = va_arg(*args, void *))) {
 
     // nodes do not have a means to keep track of their incoming node
@@ -146,24 +170,39 @@ static void *laud_var_ctor(void *self, va_list *args) {
     uint64_t count = 0;
     uint64_t capacity = 0;
 
-    struct laud_node *dependent_var = self;
+    struct laud_var *dependent_var = self;
 
     while (independent_var) {
 
       // connect nodes dependent_var and independent_var
       // dependent_var <<== independent_var
-      insert_node(&dependent_var->incoming, independent_var, &count, &capacity,
-                  0);
+      insert_node(&((struct laud_node *)dependent_var)->incoming,
+                  independent_var, &count, &capacity, 0);
 
       // independent_var ==>> dependent_var
-      insert_node(&independent_var->outgoing, dependent_var,
-                  &independent_var->outgoing_count,
-                  &independent_var->outgoing_capacity, 1);
-
+      insert_node(&((struct laud_node *)independent_var)->outgoing,
+                  dependent_var,
+                  &((struct laud_node *)independent_var)->outgoing_count,
+                  &((struct laud_node *)independent_var)->outgoing_capacity, 1);
+      reference(independent_var);
       independent_var = va_arg(*args, void *);
     }
   }
   return self;
+}
+static void *laud_var_dtor(void *self) {
+  struct laud_var *dependent_var = self;
+
+  if (dependent_var->derivative) {
+    blip(dependent_var->derivative);
+  }
+
+  if (dependent_var->value) {
+    blip(dependent_var->value);
+  }
+
+  //  UbjectError.warn("destroyed %s data @ %p\n", className(self), self);
+  return super_dtor(LaudVar, self);
 }
 
 static void *laud_var_class_ctor(void *self_, va_list *args) {
@@ -188,28 +227,27 @@ static void *laud_var_class_ctor(void *self_, va_list *args) {
   return self;
 }
 
-// static void *laud_var_dtor(void *self) {
-// return super_dtor(LaudVar, self);
-// }
-
 void *laud_var() { return init(LaudVar, NULL); }
 
-void *laud_set_variable_value(void *variable_node, void *value) {
+void laud_set_variable_value(void *variable_node, void *value,
+                             void **old_value_ptr) {
   struct laud_var *variable = variable_node;
+  struct laud_var *old_value = variable->value;
 
-  void *old_value;
+  if (old_value_ptr) {
+    *old_value_ptr = old_value;
+  }
 
-  // if there are no incoming nodes then it is an independent node and its
-  // narray (value) can be changed
-  if (!incoming_nodes(variable)) {
+  // if it is an independent node and its narray (value) can be changed
+  if (classOf(variable) == LaudVar) {
 
-    old_value = variable->value;
+    if (variable->value != value) {
+      variable->value = value;
+      // reference external value
+      reference(value);
 
-    variable->value = value;
-    reference(variable->value);
-
-    if (old_value) {
-      blip(old_value);
+      if (!old_value_ptr && old_value)
+        blip(old_value);
     }
   } else {
 
@@ -222,9 +260,16 @@ void *laud_set_variable_value(void *variable_node, void *value) {
         "ignored request to change the n-array of dependent (%s) node @ %p",
         className(variable), variable);
 
-    old_value = NULL;
+    if (!old_value_ptr)
+      *old_value_ptr = NULL;
   }
-  return old_value;
+}
+
+void laud_unset_variable_value(void *variable_node) {
+  struct laud_var *variable = variable_node;
+
+  blip(variable->value);
+  variable->value = NULL;
 }
 
 static char *var_to_string(const void *laud_object, char *buffer,
@@ -252,9 +297,9 @@ static void *var_slice(const struct laud_var *operand, const char *slice_fmt) {
 }
 
 static void *var_reduce(const struct laud_var *operand, uint16_t axis,
-                        float (*callback)(const float current_net,
-                                          const float *const values,
-                                          const void *args),
+                        number_t (*callback)(const number_t current_net,
+                                             const number_t *const values,
+                                             const void *args),
                         const void *args, void *null) {
   struct laud_var *reduce =
       init(LaudReduce, operand, axis, callback, args, NULL);
@@ -296,16 +341,18 @@ static void var_evaluate(const struct laud_var *var) {
   struct laud_var **active_var = vars;
   while (active_var && *active_var) {
 
-    UbjectError.warn("Curr. compute node: %p (%s)", *active_var,
-                     className(*active_var));
+    laud_evaluate_var_node(*active_var);
 
-    (*active_var)->value = laud_evaluate_var_node(*active_var);
+    if ((*active_var)->derivative) {
+      blip((*active_var)->derivative);
+      (*active_var)->derivative = NULL;
+    }
 
     ((struct laud_node *)*active_var)->is_visited = 0;
     active_var++;
   }
 
-  free(vars);
+  FREE(vars);
 }
 
 struct laud_narray *
@@ -321,7 +368,7 @@ differentiate_in_preorder_manner(struct laud_var *var,
                                  const struct laud_narray *derivative) {
   // Note: only perform this operation for LaudVar and not its children class
   if (classOf(var) == LaudVar) {
-    UbjectError.warn(className(var));
+
     var->derivative = derivative_add(var->value, var->derivative, derivative);
     return;
   }
@@ -337,7 +384,11 @@ differentiate_in_preorder_manner(struct laud_var *var,
     struct laud_narray *derivative_wrt_active_var =
         laud_differentiate_var_node(var, i++, derivative);
     differentiate_in_preorder_manner(active_var, derivative_wrt_active_var);
+
+    // printf("%i \n", (int)getReference(derivative_wrt_active_var));abort();
+
     independent_vars++;
+    blip(derivative_wrt_active_var);
   }
 }
 
@@ -348,4 +399,32 @@ static void var_differentiate(struct laud_var *var,
         "derivatives cannot be computed until the graph has been evatuated");
   }
   differentiate_in_preorder_manner(var, derivative);
+}
+
+char is_laud_var(const void *laud_object) {
+  const void *class = classOf(laud_object);
+
+  const void *laud_parent = super(LaudVar);
+  while ((class)) {
+    if (class == LaudVar || class == laud_parent || class == Ubject ||
+        class == TypeClass) {
+      return class == LaudVar;
+    }
+    class = super(class);
+  }
+
+  return 0;
+}
+
+void *laud_derivative_of(void *var_node) {
+  if (!is_laud_var(var_node)) {
+    UbjectError.error("argument is not LaudVar");
+  }
+  return ((struct laud_var *)var_node)->derivative;
+}
+
+void *laud_value(void *var_node) { return narray(var_node); }
+
+static number_t value_at_offset(void *operand, uint64_t offset) {
+  return laud_value_at_offset(narray(operand), offset);
 }
