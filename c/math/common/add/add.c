@@ -27,6 +27,7 @@ static void *differentiate_add(struct laud_add *add, uint64_t operand_index,
 //////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #define CLASS_INIT
+static void finish_lib();
 
 const void *LaudAdd = NULL;
 const void *LaudAddClass = NULL;
@@ -45,7 +46,11 @@ library_initializer(void) {
              laud_differentiate_var_node, differentiate_add, // evaluate_node
              NULL);
   }
+
+  atexit(finish_lib);
 }
+
+static void finish_lib() { FREE(LaudAdd); }
 
 #undef CLASS_INIT
 

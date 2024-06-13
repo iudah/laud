@@ -29,7 +29,7 @@ static void *narray_add(const struct laud_narray *operand_a,
     uint64_t lenght_ = length(operand_a);
 
     struct laud_narray *result = laud_narray(rank_, shape_, 0, NULL);
-    float *result_values = values(result);
+    number_t *result_values = values(result);
 
     for (uint64_t i = 0; i < lenght_; i++) {
 
@@ -47,7 +47,7 @@ static void *narray_add(const struct laud_narray *operand_a,
     struct laud_narray *result = laud_narray_bc(
         broadcast_element.rank, broadcast_element.shape, 0, NULL,
         broadcast_element.multiplier_a, broadcast_element.multiplier_b);
-    volatile float *result_values = values(result);
+    volatile number_t *result_values = values(result);
 
     uint64_t length_bc = length(result);
 
@@ -95,6 +95,7 @@ static void *narray_add(const struct laud_narray *operand_a,
         }
       }
     }
+    FREE(broadcast_element.shape);
     return result;
   }
 }
@@ -114,16 +115,14 @@ void *laud_narray_dadd(const struct laud_narray *operand_a,
   struct laud_narray *derivatives =
       laud_narray(rank_operand, shape_operand, 0, NULL);
 
-  float *derivative_values = values(derivatives);
-  const float *const pre_dx_values = values(pre_dx);
+  number_t *derivative_values = values(derivatives);
+  const number_t *const pre_dx_values = values(pre_dx);
 
   uint64_t length_operand = length(operand);
   uint64_t length_pre_dx = length(pre_dx);
 
   if (classOf(calc_result) == LaudNArrayBroadcast &&
       length_operand != length_pre_dx) {
-
-    UbjectError.warn("bc!");
 
     uint16_t rank_pre_dx = rank(pre_dx);
 
