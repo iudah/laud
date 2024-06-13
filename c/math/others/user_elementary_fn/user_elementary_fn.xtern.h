@@ -32,15 +32,15 @@ element_n_broadcast(struct laud_element_n_broadcast *broadcast,
   }
 
   uint64_t *shape_bc = broadcast->shape =
-      calloc(broadcast->rank, sizeof(uint64_t));
+      CALLOC(broadcast->rank, sizeof(uint64_t));
   uint64_t *multiplier_bc = broadcast->multiplier =
-      calloc(broadcast->rank, sizeof(uint64_t));
+      CALLOC(broadcast->rank, sizeof(uint64_t));
   multiplier_bc[broadcast->rank - 1] = 1;
 
   uint64_t **multipliers = broadcast->multipliers =
-      calloc(no_of_operands, sizeof(uint64_t *));
+      CALLOC(no_of_operands, sizeof(uint64_t *));
   for (uint64_t i = 0; i < no_of_operands; i++) {
-    multipliers[i] = calloc(rank(operands[i]), sizeof(uint64_t));
+    multipliers[i] = CALLOC(rank(operands[i]), sizeof(uint64_t));
   }
 
   int8_t discard_broadcast = 1;
@@ -91,12 +91,12 @@ element_n_broadcast(struct laud_element_n_broadcast *broadcast,
   }
 
   if (discard_broadcast) {
-    free(shape_bc);
+    FREE(shape_bc);
 
     for (uint64_t i = 0; i < no_of_operands; i++) {
-      free(multipliers[i]);
+      FREE(multipliers[i]);
     }
-    free(multipliers);
+    FREE(multipliers);
 
     shape_bc = broadcast->shape = NULL;
     broadcast->multipliers = NULL;
@@ -208,6 +208,10 @@ static void *narray_user_elementary_fn(laud_user_elementary_fn_t user_fn,
 
     user_fn(result_values, length_bc, operands_values, get_bc_value_fn, args);
   }
+  if (broadcast_element.shape)
+    FREE(broadcast_element.shape);
+  if (broadcast_element.multiplier)
+    FREE(broadcast_element.multiplier);
   return result;
 }
 

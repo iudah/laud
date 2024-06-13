@@ -35,6 +35,7 @@ static void *differentiate_user_elementary_fn(
 
 #define CLASS_INIT
 
+static void fini_uefn();
 const void *LaudUserElementaryFn = NULL;
 const void *LaudUserElementaryFnClass = NULL;
 
@@ -55,6 +56,12 @@ library_initializer(void) {
              differentiate_user_elementary_fn, // differentiate_node
              NULL);
   }
+  atexit(fini_uefn);
+}
+
+
+static void fini_uefn(){
+    FREE(LaudUserElementaryFn);
 }
 
 #undef CLASS_INIT
