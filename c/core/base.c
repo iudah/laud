@@ -10,6 +10,7 @@
 #include "../math/nn/relu/relu.h"
 #include "../math/nn/sigmoid/sigmoid.h"
 #include "../math/others/user_elementary_fn/user_elementary_fn.h"
+#include "../misc/slice/slice.h"
 #include "base.h"
 #include "base.r.h"
 
@@ -31,8 +32,8 @@ const void *LaudBaseClass = NULL;
 const void *LaudBase = NULL;
 
 static void finish_lib() {
-  FREE(LaudBase);
-  FREE(LaudBaseClass);
+  FREE((void*)LaudBase);
+  FREE((void*)LaudBaseClass);
 }
 
 static void __attribute__((constructor(LAUD_BASE_PRIORITY)))

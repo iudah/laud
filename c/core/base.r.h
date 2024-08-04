@@ -62,11 +62,14 @@ struct laud_base_class {
    * @brief Slices a Laud object based on a given format.
    *
    * @param operand The Laud object to slice.
-   * @param slice_format The format string describing the slice.
+   * @param slice_data The pointer to structure describing the slice.
+   * @param slice_shape The shape of the sliced array.
+   * @param slice_length The number of data points of the sliced array.
    * @param null Unused parameter (reserved for future use).
    * @return A new Laud object representing the sliced portion.
    */
-  void *(*slice)(const void *operand, const char *slice_format, void *null);
+  void *(*slice)(const void *operand, const void *slice_data,
+                 uint64_t *slice_shape, uint64_t slice_length, void *null);
 
   /**
    * @brief Applies the rectified linear unit function to a Laud object.
