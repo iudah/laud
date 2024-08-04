@@ -1,7 +1,9 @@
+#include "TypeClass.r.h"
 #include <errno.h>
 #include <math.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/types.h>
@@ -16,16 +18,18 @@
 #include "../core/base.r.h"
 #include "../core/narray.h"
 #include "../core/narray.r.h"
+#include "../core/narray.r.static.h"
 #include "../core/narray_bc.r.h"
 #include "../math/common/add/add.h"
-#include "../math/common/add/add.xtern.h"
+#include "../math/common/add/add.x.narray.h"
 #include "../math/common/matrix_dot/matrix_dot.h"
 #include "../math/common/matrix_dot/matrix_dot.xtern.h"
 #include "../math/nn/nn.h"
 #include "../math/nn/nn.xtern.h"
 #include "../math/others/user_elementary_fn/user_elementary_fn.h"
 #include "../math/others/user_elementary_fn/user_elementary_fn.xtern.h"
-#include "../misc/slice.r.h"
+#include "../misc/slice/slice.h"
+#include "../misc/slice/slice.x.narray.h"
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -49,34 +53,12 @@ static void *laud_narray_ctor(void *self, va_list *args);
 
 static void *narray_dtor(void *self);
 
+static uint64_t narray_puto(void *self, FILE *f);
+
+static void *narray_rollb(void *self, FILE *f);
+
 static char *narray_as_string(const void *laud_object, char *buffer,
                               const uint64_t buf_limit);
-
-static void *narray_slice(const void *operand, const char *slice_fmt);
-
-static void adjust_slice_boundary(const uint16_t section,
-                                  struct laud_dim_slice_data *slice,
-                                  const int32_t bound, const uint16_t dim,
-                                  const uint64_t *shape);
-
-static void report_expected_integer_error(const char *fmt, const char *slice);
-
-static inline void fill_slice_data_for_dimension(
-    const void *self, struct laud_dim_slice_data *slice_object,
-    uint64_t *new_length, uint64_t *new_shape, int16_t *dim, int16_t *section,
-    char *ignore_colon);
-
-static void apply_slice(const struct laud_dim_slice_data *slice_object,
-                        number_t *dest_values, const uint64_t *new_shape,
-                        const uint64_t new_length,
-                        const struct laud_narray *const unsliced_src);
-
-static void apply_effective_slice(
-    const uint16_t rank, const uint16_t dim,
-    const struct laud_dim_slice_data *slice, const uint64_t dst_cum_offset,
-    const uint64_t src_cum_offset, const uint64_t dst_dim_multiplier,
-    const uint64_t src_dim_multiplier, const uint64_t *const dst_shape,
-    const uint64_t *const src_shape, number_t *dest, const number_t *const src);
 
 static void *narray_relu(const struct laud_narray *operand_a);
 
@@ -99,11 +81,6 @@ static void evaluate(const struct laud_narray *operand);
 static void differentiate(const struct laud_narray *operand,
                           const struct laud_narray *pre_dydx);
 
-static inline void
-element_n_broadcast(struct laud_element_n_broadcast *broadcast,
-                    const struct laud_narray **operands,
-                    const uint64_t no_of_operands);
-
 static number_t value_at_offset(void *narray_, uint64_t offset);
 
 #undef STATIC_FUNC_DECL
@@ -119,7 +96,7 @@ static number_t value_at_offset(void *narray_, uint64_t offset);
 
 const void *LaudNArray;
 
-static void finish_lib() { FREE(LaudNArray); }
+static void finish_lib() { FREE((void *)LaudNArray); }
 
 static void __attribute__((constructor(LAUD_NARRAY_PRIORITY)))
 library_initializer(void) {
@@ -130,10 +107,12 @@ library_initializer(void) {
                       ctor, laud_narray_ctor,             // constructor
                       dtor, narray_dtor,                  //  destructor
                       className, "LaudNArray",            // class name
+                      puto, narray_puto,                  // puto
+                      rollback, narray_rollb,             // rollback
                       laud_to_string, narray_as_string,   // to string
                       laud_slice, narray_slice,           // slice
                       laud_matrix_dot, narray_matrix_dot, // matrix dot
-                      laud_add, narray_add,               // addition
+                      laud_add, narray_add_,              // addition
                       laud_relu, narray_relu,             // relu
                       laud_sigmoid, narray_sigmoid,       // sigmoid
                       laud_shape, shape,                  // shape
@@ -244,6 +223,47 @@ static void *narray_dtor(void *self) {
   return super_dtor(LaudNArray, narray);
 }
 
+static uint64_t narray_puto(void *self, FILE *f) {
+  struct laud_narray *narray = self;
+  uint64_t len = fwrite(&narray->rank, 1, sizeof(narray->rank), f);
+  len += fwrite(narray->shape, narray->rank, sizeof(*narray->shape), f);
+  len += fwrite(&narray->length, 1, sizeof(narray->length), f);
+  for (uint64_t i = 0; i < narray->length; i++) {
+    // todo: check to update frexp
+    int exp_ = 0;
+
+    // using float since some systems(?) might not differentiate double type
+    // from float type(?)
+    int32_t sig =
+        (int32_t)(frexpf((float)narray->values[i], &exp_) * (float)INT32_MAX);
+    len += fwrite(&sig, 1, sizeof(sig), f);
+    len += fwrite(&exp_, 1, sizeof(exp_), f);
+  }
+  return len;
+}
+
+static void *narray_rollb(void *self, FILE *f) {
+  struct laud_narray *narray = super_rollback(LaudNArray, self, f);
+  fread(&narray->rank, 1, sizeof(narray->rank), f);
+
+  narray->shape = MALLOC(narray->rank * sizeof(*narray->shape));
+  fread(narray->shape, narray->rank, sizeof(*narray->shape), f);
+
+  fread(&narray->length, 1, sizeof(narray->length), f);
+
+  narray->values = MALLOC(narray->length * sizeof(number_t));
+
+  for (uint64_t i = 0; i < narray->length; i++) {
+    int exp_ = 0;
+    int32_t sig;
+    fread(&sig, 1, sizeof(sig), f);
+    fread(&exp_, 1, sizeof(exp_), f);
+
+    narray->values[i] = (number_t)ldexpf((float)sig / (float)INT32_MAX, exp_);
+  }
+  return narray;
+}
+
 void *laud_from_function(
     number_t (*generator)(const uint16_t rank, const uint64_t *const shape,
                           const uint64_t offset, const void *const usr_args),
@@ -281,7 +301,7 @@ void *laud_from_function(
 
 static _Thread_local unsigned int seed = 0;
 number_t simple_rng() {
-
+  // TODO: use pcg_rng
   if (!seed) {
     seed = (unsigned int)time(NULL);
     srand(101017);
@@ -298,7 +318,8 @@ number_t simple_rng() {
 }
 
 void *laud_from_text(const char *file_path, const char *delim) {
-  // open file
+  // TODO: allow internet download of text
+  //  open file
   FILE *txt = fopen(file_path, "r");
   if (!txt) {
     // error occured
@@ -373,9 +394,11 @@ void *laud_from_text(const char *file_path, const char *delim) {
   return narray;
 }
 
+static _Thread_local char *string = NULL;
+static void free_line() { FREE(string); }
+
 static char *get_line(FILE *f, uint64_t *string_length) {
   static _Thread_local uint64_t capacity = 0;
-  static _Thread_local char *string = NULL;
   int c;
   uint64_t length = 0;
 
@@ -392,6 +415,7 @@ static char *get_line(FILE *f, uint64_t *string_length) {
       // Handle memory allocation failure
       return 0;
     }
+    atexit(free_line);
   }
 
   while ((c = fgetc(f)) != EOF) {
@@ -471,6 +495,7 @@ static char *narray_as_string(const void *laud_object, char *buffer,
   return buffer;
 }
 
+#if 0
 static void *narray_slice(const void *array, const char *slice_fmt) {
 
   uint16_t input_rank = rank(array);
@@ -482,86 +507,12 @@ static void *narray_slice(const void *array, const char *slice_fmt) {
 
   struct laud_narray *sliced_var = laud_narray(input_rank, new_shape, 0, NULL);
 
-  return laud___narray_slice_array_(array, slice_data, sliced_var);
+void *res= laud___narray_slice_array_(array, slice_data, sliced_var);
+  
+FREE(slice_data);
+  return res;
 }
 
-void *laud___create_slice_data_(const void *array,
-                                const char *const slice_format,
-                                uint64_t *new_shape, uint64_t *new_length) {
-
-  char *format_cursor = (char *)slice_format;
-
-  const uint16_t array_rank = rank(array);
-  const uint64_t *array_shape = shape(array);
-
-  struct laud_dim_slice_data *slice_object =
-      CALLOC(sizeof(struct laud_dim_slice_data), array_rank);
-
-  if (!slice_object) {
-    UbjectError.error(
-        "create_slice_object: memory allocation failed in laud_slice\n");
-    return NULL;
-  }
-
-  char ignore_colon = 0;
-
-  int16_t current_dimension = 0;
-  int16_t current_section = 0;
-
-  char current_char;
-
-  while ((current_char = format_cursor[0])) {
-    switch (current_char) {
-    case '0' ... '9':
-    case '-':
-    case '+': {
-      int value = (int)strtol(format_cursor, &format_cursor, 10);
-
-      adjust_slice_boundary(current_section, slice_object + current_dimension,
-                            value, current_dimension, array_shape);
-      ignore_colon = 1;
-      format_cursor--;
-      current_section++;
-    } break;
-
-    case ':':
-      if (!ignore_colon) {
-        adjust_slice_boundary(
-            current_section, slice_object + current_dimension,
-            current_section == 0 ? 0 : array_shape[current_dimension],
-            current_dimension, array_shape);
-        current_section++;
-      }
-      ignore_colon = 0;
-      break;
-
-    case ',': {
-      if (current_section == 0 || current_section == 2) {
-        report_expected_integer_error(format_cursor, slice_format);
-      }
-      fill_slice_data_for_dimension(array, slice_object, new_length, new_shape,
-                                    &current_dimension, &current_section,
-                                    &ignore_colon);
-    } break;
-
-    default:
-      break;
-    }
-    format_cursor++;
-  }
-  if (current_section == 0) {
-    report_expected_integer_error(format_cursor, slice_format);
-  }
-  // current_dimension will still be less than array_rank. This while loop
-  // will remedy that and complete the shape
-  while (current_dimension < rank(array)) {
-    fill_slice_data_for_dimension(array, slice_object, new_length, new_shape,
-                                  &current_dimension, &current_section,
-                                  &ignore_colon);
-  }
-
-  return slice_object;
-}
 
 static void adjust_slice_boundary(const uint16_t section,
                                   struct laud_dim_slice_data *slice,
@@ -697,7 +648,7 @@ static void apply_effective_slice(const uint16_t rank, const uint16_t dim,
     }
   }
 }
-
+#endif
 char element_compatible(const struct laud_narray *operand_a,
                         const struct laud_narray *operand_b) {
   int16_t rank_a = rank(operand_a);

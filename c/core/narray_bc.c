@@ -8,7 +8,7 @@
 
 #define LAUD_NARRAY_BC_IMPLEMENTATION
 #include "../core/base.r.h"
-#include "../core/narray_bc.r.h"
+#include "../core/narray_bc.r.static.h"
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -36,7 +36,7 @@ static void *narray_bc_dtor(void *self);
 
 const void *LaudNArrayBroadcast;
 
-static void finish_lib() { FREE(LaudNArrayBroadcast); }
+static void finish_lib() { FREE((void *)LaudNArrayBroadcast); }
 
 static void __attribute__((constructor(LAUD_NARRAY_BC_PRIORITY)))
 library_initializer(void) {
@@ -92,11 +92,16 @@ static void *narray_bc_dtor(void *self) {
   struct laud_narray_bc *narray = self;
 
   if (narray->multiplier_a) {
+    if (!narray->multiplier_b) {
+      void **multipliers = (void **)narray->multiplier_a;
+      while (*multipliers) {
+        FREE(*multipliers);
+        multipliers++;
+      }
+    } else {
+      FREE(narray->multiplier_b);
+    }
     FREE(narray->multiplier_a);
-  }
-
-  if (narray->multiplier_b) {
-    FREE(narray->multiplier_b);
   }
 
   // UbjectError.warn("destroyed %s data @ %p\n", className(narray), narray);
