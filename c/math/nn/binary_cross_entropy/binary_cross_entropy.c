@@ -2,6 +2,8 @@
 
 #define NODE_PROTECTED
 #define VAR_PROTECTED
+#include "../../../core/node.r.static.h"
+#include "../../../core/var.r.static.h"
 #include "../../../math/nn/binary_cross_entropy/binary_cross_entropy.h"
 #include "../../../math/nn/binary_cross_entropy/binary_cross_entropy.r.h"
 
@@ -50,12 +52,10 @@ library_initializer(void) {
         differentiate_binary_cross_entropy, // differentiate_node
         NULL);
   }
-atexit(fini_bce);
+  atexit(fini_bce);
 }
 
-static void fini_bce(){
-    FREE(LaudBinaryCrossEntropy);
-}
+static void fini_bce() { FREE(LaudBinaryCrossEntropy); }
 
 #undef CLASS_INIT
 

@@ -3,6 +3,8 @@
 #define NODE_PROTECTED
 #define VAR_PROTECTED
 #include "../../../core/d_narray.r.h"
+#include "../../../core/node.r.static.h"
+#include "../../../core/var.r.static.h"
 #include "mse.r.h"
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -47,12 +49,10 @@ library_initializer(void) {
                    differentiate_mse, // differentiate_node
                    NULL);
   }
-atexit(fini_mse);
+  atexit(fini_mse);
 }
 
-static void fini_mse(){
-    FREE(LaudMSE);
-}
+static void fini_mse() { FREE(LaudMSE); }
 
 #undef CLASS_INIT
 

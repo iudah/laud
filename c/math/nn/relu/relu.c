@@ -2,6 +2,8 @@
 
 #define NODE_PROTECTED
 #define VAR_PROTECTED
+#include "../../../core/node.r.static.h"
+#include "../../../core/var.r.static.h"
 #include "relu.r.h"
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -45,14 +47,11 @@ library_initializer(void) {
                     differentiate_relu, // differentiate_node
                     NULL);
   }
-  
+
   atexit(fini_relu);
 }
 
-static void fini_relu(){
-    FREE(LaudReLU);
-}
-
+static void fini_relu() { FREE(LaudReLU); }
 
 #undef CLASS_INIT
 

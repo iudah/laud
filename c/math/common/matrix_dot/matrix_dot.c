@@ -3,6 +3,8 @@
 
 #define NODE_PROTECTED
 #define VAR_PROTECTED
+#include "../../../core/node.r.static.h"
+#include "../../../core/var.r.static.h"
 #include "../../../math/common/matrix_dot/matrix_dot.h"
 #include "../../../math/common/matrix_dot/matrix_dot.r.h"
 

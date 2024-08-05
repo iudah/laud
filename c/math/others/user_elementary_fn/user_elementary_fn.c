@@ -3,6 +3,8 @@
 
 #define NODE_PROTECTED
 #define VAR_PROTECTED
+#include "../../../core/node.r.static.h"
+#include "../../../core/var.r.static.h"
 #include "user_elementary_fn.h"
 #include "user_elementary_fn.r.h"
 
@@ -59,10 +61,7 @@ library_initializer(void) {
   atexit(fini_uefn);
 }
 
-
-static void fini_uefn(){
-    FREE(LaudUserElementaryFn);
-}
+static void fini_uefn() { FREE(LaudUserElementaryFn); }
 
 #undef CLASS_INIT
 

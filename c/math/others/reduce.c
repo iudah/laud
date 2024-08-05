@@ -1,8 +1,11 @@
 #include <Ubject.h>
 
-#include "../../core/d_narray.r.h"
+#include "../../../c/core/d_narray.r.h"
 #define NODE_PROTECTED
 #define VAR_PROTECTED
+#include "../../core/node.r.static.h"
+#include "../../core/var.h"
+#include "../../core/var.r.static.h"
 #include "reduce.r.h"
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////

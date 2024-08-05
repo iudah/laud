@@ -1,12 +1,20 @@
-#ifndef USER_ELEMENTARY_FN_XTERN_H
-#define USER_ELEMENTARY_FN_XTERN_H
-
-#include <inttypes.h>
-#include <stdint.h>
+#ifndef USER_ELEMENTARY_FN_X_NARRAY_H
+#define USER_ELEMENTARY_FN_X_NARRAY_H
 
 #include <Ubject.h>
+#include <inttypes.h>
+#include <mem_lk.h>
+#include <stdint.h>
+#include <stdlib.h>
 
-#ifdef LAUD_NARRAY_IMPLEMENTATION
+// #define LAUD_NARRAY_BC_IMPLEMENTATION
+#include "../../../core/narray.h"
+#include "../../../core/narray.r.h"
+#include "../../../core/narray.r.static.h"
+#include "../../../core/narray_bc.r.h"
+#include "../../../core/narray_bc.r.static.h"
+#include "../../../math/others/user_elementary_fn/user_elementary_fn.r.h"
+
 #include "user_elementary_fn.def.h"
 
 struct laud_element_n_broadcast {
@@ -181,14 +189,15 @@ static void *narray_user_elementary_fn(laud_user_elementary_fn_t user_fn,
 
   } else {
 
-    void **tmp = REALLOC(broadcast_element.multipliers,
-                         (no_of_operands + 1) * sizeof(void *));
+    uint64_t **tmp = REALLOC(broadcast_element.multipliers,
+                             (no_of_operands + 1) * sizeof(uint64_t *));
     if (!tmp)
       UbjectError.error("insufficient memory");
     tmp[no_of_operands] = NULL;
-    broadcast_element.multipliers = tmp;
-    result = laud_narray_bc(broadcast_element.rank, broadcast_element.shape, 0,
-                            NULL, broadcast_element.multipliers, NULL);
+    broadcast_element.multipliers = (uint64_t **)tmp;
+    result =
+        laud_narray_bc(broadcast_element.rank, broadcast_element.shape, 0, NULL,
+                       (const uint64_t *)broadcast_element.multipliers, NULL);
     number_t *result_values = values(result);
 
     uint64_t length_bc = length(result);
@@ -224,7 +233,7 @@ static void *narray_user_elementary_fn(laud_user_elementary_fn_t user_fn,
 void *laud_narray_duser_elementary_fn(const struct laud_narray *operand_a,
                                       const struct laud_narray *operand_b,
                                       uint64_t respect_index,
-                                      struct laud_narray *pre_dx,
+                                      const struct laud_narray *pre_dx,
                                       struct laud_narray *calc_result) {
   UbjectError.error("Can't differentiate user function");
   const struct laud_narray *operand =
@@ -252,9 +261,8 @@ void *laud_narray_duser_elementary_fn(const struct laud_narray *operand_a,
     memset(index, 0, sizeof(index));
 
     uint64_t *multiplier =
-        respect_index == 0
-            ? ((struct laud_narray_bc *)calc_result)->multiplier_a
-            : ((struct laud_narray_bc *)calc_result)->multiplier_b;
+        respect_index == 0 ? multiplier_a((struct laud_narray_bc *)calc_result)
+                           : multiplier_b((struct laud_narray_bc *)calc_result);
 
     uint64_t *shape_pre_dx = shape(pre_dx);
 
@@ -293,25 +301,5 @@ void *laud_narray_duser_elementary_fn(const struct laud_narray *operand_a,
 
   return derivatives;
 }
-#endif
-
-#ifdef LAUD_VAR_IMPLEMENTATION
-
-#include "../../../math/others/user_elementary_fn/user_elementary_fn.r.h"
-
-static void *var_user_elementary_fn(const struct laud_var *operand_a,
-                                    const struct laud_var *operand_b) {
-  abort();
-  struct laud_var *user_elementary_fnition =
-      init(LaudUserElementaryFn, operand_a, operand_b, NULL);
-
-  if (operand_a->value && operand_b->value) {
-    laud_evaluate_var_node(user_elementary_fnition);
-  }
-
-  return user_elementary_fnition;
-}
-
-#endif
 
 #endif

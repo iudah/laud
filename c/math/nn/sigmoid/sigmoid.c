@@ -2,6 +2,8 @@
 
 #define NODE_PROTECTED
 #define VAR_PROTECTED
+#include "../../../core/node.r.static.h"
+#include "../../../core/var.r.static.h"
 #include "sigmoid.r.h"
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -49,13 +51,11 @@ library_initializer(void) {
                        differentiate_sigmoid, // differentiate_node
                        NULL);
   }
-  
+
   atexit(fini_sigm);
 }
 
-static void fini_sigm(){
-    FREE(LaudSigmoid);
-}
+static void fini_sigm() { FREE(LaudSigmoid); }
 
 #undef CLASS_INIT
 
