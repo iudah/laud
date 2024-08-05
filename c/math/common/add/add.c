@@ -1,9 +1,13 @@
 #include <Ubject.h>
+#include <stdlib.h>
 
 #define NODE_PROTECTED
 #define VAR_PROTECTED
-#include "add.h"
-#include "add.r.h"
+#include "../../../core/narray.r.h"
+#include "../../../core/node.r.static.h"
+#include "../../../core/var.r.static.h"
+#include "../../../math/common/add/add.h"
+#include "../../../math/common/add/add.r.h"
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////
