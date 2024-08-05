@@ -6,7 +6,7 @@
 
 #define NODE_PROTECTED
 #include "node.h"
-#include "node.r.h"
+#include "node.r.static.h"
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -33,7 +33,7 @@ static void *laud_node_dtor(struct laud_node *self);
 const void *LaudNodeClass = NULL;
 const void *LaudNode = NULL;
 
-static void finish_lib() { FREE(LaudNode); }
+static void finish_lib() { FREE((void *)LaudNode); }
 
 static void __attribute__((constructor(LAUD_NODE_PRIORITY)))
 library_initializer(void) {
@@ -104,7 +104,7 @@ void laud_replace_independent_node(void *var_node, uint64_t index,
   insert_node(&new_node->outgoing, y_node, &new_node->outgoing_count,
               &new_node->outgoing_capacity, 1);
 
-  void **node_array = old_node->outgoing;
+  struct laud_node **node_array = old_node->outgoing;
   uint64_t count = old_node->outgoing_count -= 1;
   int64_t n_left = 0;
   int64_t n_right = count;
@@ -121,3 +121,41 @@ void laud_replace_independent_node(void *var_node, uint64_t index,
     abort();
   }
 }
+
+ uint64_t laud_serialize_graph(void *var_node,const char *fpath){
+     FILE *f = fopen(fpath, "wb");
+  // list all dependencies
+  struct laud_node **nodes =
+      (struct laud_node **)depth_first_traverse((struct laud_node *)var_node);
+      
+        // for each dependency call evaluate()
+  struct laud_node **active_node = nodes;
+  uint64_t i=0;
+  uint64_t len=0;
+  while (active_node && *active_node) {
+
+    len+=puto(*active_node,f);
+    (*active_node)->outgoing_capacity=i++;
+    
+    struct laud_node **deps = (*active_node)->incoming;uint64_t zero =0;
+    while(deps && *deps ){
+        len+=fwrite(&(*deps)->outgoing_capacity, 1, sizeof((*deps)->outgoing_capacity), f);
+        deps++;
+    }
+        len+=fwrite(&zero, 1, sizeof(zero), f);
+
+    /*
+    if ((*active_var)->derivative) {
+      blip((*active_var)->derivative);
+      (*active_var)->derivative = NULL;
+    }
+    */
+
+    ((struct laud_node *)*active_node)->is_visited = 0;
+    active_node++;
+  }
+
+  FREE(nodes);
+
+  return len;
+ }
