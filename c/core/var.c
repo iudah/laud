@@ -10,10 +10,11 @@
 #define NODE_PROTECTED
 #define VAR_PROTECTED
 #include "../core/base.h"
+#include "../core/node.r.static.h"
 #include "../core/var.h"
-#include "../core/var.r.h"
+#include "../core/var.r.static.h"
 #include "../math/common/add/add.h"
-#include "../math/common/add/add.xtern.h"
+#include "../math/common/add/add.x.var.h"
 #include "../math/common/matrix_dot/matrix_dot.h"
 #include "../math/common/matrix_dot/matrix_dot.xtern.h"
 #include "../math/nn/nn.h"
@@ -21,7 +22,8 @@
 #include "../math/others/reduce.r.h"
 #include "../math/others/user_elementary_fn/user_elementary_fn.h"
 #include "../math/others/user_elementary_fn/user_elementary_fn.xtern.h"
-#include "../misc/slice.r.h"
+#include "../misc/slice/slice.h"
+#include "../misc/slice/slice.x.var.h"
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -42,8 +44,6 @@ static void *laud_var_class_ctor(void *self_, va_list *args);
 
 static char *var_to_string(const void *laud_object, char *buffer,
                            uint64_t buf_limit);
-
-static void *var_slice(const struct laud_var *operand, const char *slice_fmt);
 
 static void *var_reduce(const struct laud_var *operand, uint16_t axis,
                         number_t (*callback)(const number_t current_net,
@@ -80,8 +80,8 @@ const void *LaudVar = NULL;
 const void *LaudVarClass = NULL;
 
 static void finish_lib() {
-  FREE(LaudVar);
-  FREE(LaudVarClass);
+  FREE((void*)LaudVar);
+  FREE((void*)LaudVarClass);
 }
 
 static void __attribute__((constructor(LAUD_VAR_PRIORITY)))
@@ -170,7 +170,7 @@ static void *laud_var_ctor(void *self, va_list *args) {
     uint64_t count = 0;
     uint64_t capacity = 0;
 
-    struct laud_var *dependent_var = self;
+    struct laud_node *dependent_var = self;
 
     while (independent_var) {
 
@@ -285,22 +285,11 @@ static char *var_to_string(const void *laud_object, char *buffer,
   return buffer;
 }
 
-static void *var_slice(const struct laud_var *operand, const char *slice_fmt) {
-
-  struct laud_var *slice = init(LaudSlice, operand, NULL, slice_fmt, NULL);
-
-  if (operand->value) {
-    laud_evaluate_var_node(slice);
-  }
-
-  return slice;
-}
-
 static void *var_reduce(const struct laud_var *operand, uint16_t axis,
                         number_t (*callback)(const number_t current_net,
                                              const number_t *const values,
                                              const void *args),
-                        const void *args, void *null) {
+                        const void *args, void __attribute__((unused))*null) {
   struct laud_var *reduce =
       init(LaudReduce, operand, axis, callback, args, NULL);
 
@@ -428,3 +417,4 @@ void *laud_value(void *var_node) { return narray(var_node); }
 static number_t value_at_offset(void *operand, uint64_t offset) {
   return laud_value_at_offset(narray(operand), offset);
 }
+

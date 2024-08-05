@@ -25,22 +25,9 @@ struct laud_var {
 extern const void *LaudVar;
 extern const void *LaudVarClass;
 
-#ifdef VAR_PROTECTED
-
-#include "narray.h"
-
 struct laud_narray *laud_evaluate_var_node(void *node);
-
 struct laud_narray *
 laud_differentiate_var_node(struct laud_var *node, uint64_t operand_index,
                             const struct laud_narray *derivative);
-
-static inline struct laud_narray *narray(const struct laud_var *node) {
-  if (is_laud_narray(node))
-    return (struct laud_narray *)node;
-  return node->value;
-}
-
-#endif
 
 #endif
