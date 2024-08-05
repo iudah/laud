@@ -1,13 +1,13 @@
 *.gitignore
-build/*
-.vscode/*
+build/
+.vscode/
 Makefile_tmp
 ADADEDEJIADEWALE513@GMAIL.COM
 *.exe
 *.dll
 *.a
 *.csv
-*.txt
 Makefile_*
 *.clangd
 *.diff
+*cache
