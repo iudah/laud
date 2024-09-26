@@ -6,7 +6,9 @@
 #include "../math/common/add/add.h"
 #include "../math/common/matrix_dot/matrix_dot.h"
 #include "../math/nn/binary_cross_entropy/binary_cross_entropy.h"
+#include "../math/nn/conv/conv.h"
 #include "../math/nn/mse/mse.h"
+#include "../math/nn/pool/pool.h"
 #include "../math/nn/relu/relu.h"
 #include "../math/nn/sigmoid/sigmoid.h"
 #include "../math/others/user_elementary_fn/user_elementary_fn.h"
@@ -32,8 +34,8 @@ const void *LaudBaseClass = NULL;
 const void *LaudBase = NULL;
 
 static void finish_lib() {
-  FREE((void*)LaudBase);
-  FREE((void*)LaudBaseClass);
+  FREE((void *)LaudBase);
+  FREE((void *)LaudBaseClass);
 }
 
 static void __attribute__((constructor(LAUD_BASE_PRIORITY)))
@@ -88,6 +90,8 @@ static void *laud_base_class_ctor(void *self_, va_list *args) {
         memcpy(&self->relu, &method, sizeof(method));
       else if (selector == (voidf)laud_sigmoid)
         memcpy(&self->sigmoid, &method, sizeof(method));
+      else if (selector == (voidf)laud_conv)
+        memcpy(&self->conv, &method, sizeof(method));
       else if (selector == (voidf)laud_shape)
         memcpy(&self->shape, &method, sizeof(method));
       else if (selector == (voidf)laud_rank)
@@ -106,6 +110,8 @@ static void *laud_base_class_ctor(void *self_, va_list *args) {
         memcpy(&self->user_elementary_fn, &method, sizeof(method));
       else if (selector == (voidf)laud_value_at_offset)
         memcpy(&self->value_at_offset, &method, sizeof(method));
+      else if (selector == (voidf)laud_pool)
+        memcpy(&self->pool, &method, sizeof(method));
     }
   }
 

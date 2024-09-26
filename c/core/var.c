@@ -17,8 +17,12 @@
 #include "../math/common/add/add.x.var.h"
 #include "../math/common/matrix_dot/matrix_dot.h"
 #include "../math/common/matrix_dot/matrix_dot.xtern.h"
+#include "../math/nn/conv/conv.h"
+#include "../math/nn/conv/conv.x.var.h"
 #include "../math/nn/nn.h"
 #include "../math/nn/nn.xtern.h"
+#include "../math/nn/pool/pool.h"
+#include "../math/nn/pool/pool.x.var.h"
 #include "../math/others/reduce.r.h"
 #include "../math/others/user_elementary_fn/user_elementary_fn.h"
 #include "../math/others/user_elementary_fn/user_elementary_fn.xtern.h"
@@ -80,8 +84,8 @@ const void *LaudVar = NULL;
 const void *LaudVarClass = NULL;
 
 static void finish_lib() {
-  FREE((void*)LaudVar);
-  FREE((void*)LaudVarClass);
+  FREE((void *)LaudVar);
+  FREE((void *)LaudVarClass);
 }
 
 static void __attribute__((constructor(LAUD_VAR_PRIORITY)))
@@ -103,6 +107,8 @@ library_initializer(void) {
         laud_add, var_add,                              // addition
         laud_relu, var_relu,                            // relu
         laud_sigmoid, var_sigmoid,                      // sigmoid
+        laud_conv, var_conv,                            // conv
+        laud_pool, var_pool,                            // pool
         laud_shape, var_shape,                          // shape
         laud_rank, var_rank,                            // rank
         laud_evaluate, var_evaluate,                    // evaluate
@@ -289,7 +295,7 @@ static void *var_reduce(const struct laud_var *operand, uint16_t axis,
                         number_t (*callback)(const number_t current_net,
                                              const number_t *const values,
                                              const void *args),
-                        const void *args, void __attribute__((unused))*null) {
+                        const void *args, void __attribute__((unused)) * null) {
   struct laud_var *reduce =
       init(LaudReduce, operand, axis, callback, args, NULL);
 
@@ -417,4 +423,3 @@ void *laud_value(void *var_node) { return narray(var_node); }
 static number_t value_at_offset(void *operand, uint64_t offset) {
   return laud_value_at_offset(narray(operand), offset);
 }
-

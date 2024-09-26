@@ -1,5 +1,5 @@
-#ifndef VAR_R_H
-#define VAR_R_H
+#ifndef LAUD_VAR_R_H
+#define LAUD_VAR_R_H
 
 #include "narray.r.h"
 #include "node.r.h"

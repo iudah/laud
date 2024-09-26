@@ -1,5 +1,5 @@
-#ifndef BASE_R_H
-#define BASE_R_H
+#ifndef LAUD_BASE_R_H
+#define LAUD_BASE_R_H
 
 #include <stdint.h>
 
@@ -147,6 +147,12 @@ struct laud_base_class {
                               void *args, void *null);
 
   number_t (*value_at_offset)(void *holder, uint64_t offset, void *null);
+
+  void *(*conv)(void *operand_a, void *operand_b, const uint64_t *stride,
+                const uint64_t *paddings, void *null);
+  void *(*pool)(void *operand_a, const void *pooling_class,
+                const uint64_t *filter_shape, const uint64_t *stride,
+                const uint64_t *paddings, void *null);
 };
 
 /**

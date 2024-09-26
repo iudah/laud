@@ -24,8 +24,11 @@
 #include "../math/common/add/add.x.narray.h"
 #include "../math/common/matrix_dot/matrix_dot.h"
 #include "../math/common/matrix_dot/matrix_dot.xtern.h"
+#include "../math/nn/conv/conv.x.narray.h"
 #include "../math/nn/nn.h"
 #include "../math/nn/nn.xtern.h"
+#include "../math/nn/pool/max/max_pool.x.narray.h"
+#include "../math/nn/pool/pool.x.narray.h"
 #include "../math/others/user_elementary_fn/user_elementary_fn.h"
 #include "../math/others/user_elementary_fn/user_elementary_fn.xtern.h"
 #include "../misc/slice/slice.h"
@@ -115,14 +118,16 @@ library_initializer(void) {
                       laud_add, narray_add_,              // addition
                       laud_relu, narray_relu,             // relu
                       laud_sigmoid, narray_sigmoid,       // sigmoid
+                      laud_conv, narray_conv,             // conv
+                      laud_pool, narray_pool,             // pool
                       laud_shape, shape,                  // shape
                       laud_rank, rank,                    // rank
                       laud_evaluate, evaluate,            // evaluate
                       laud_differentiate, differentiate,  // differentiate
                       laud_reduce, narray_reduce,         // reduce
-                      laud_binary_cross_entropy,
-                      narray_binary_cross_entropy, // log loss
-                      laud_mse, narray_mse,        // mse
+                      laud_binary_cross_entropy,          // X-entropy
+                      narray_binary_cross_entropy,        // log loss
+                      laud_mse, narray_mse,               // mse
                       laud_user_elementary_fn,
                       narray_user_elementary_fn, // user_elementary_fn
                       laud_value_at_offset, value_at_offset, //
@@ -211,11 +216,19 @@ static void laud_configure_narray(void *laud_handle, const uint16_t rank,
   return;
 }
 
+static inline void free_and_null(void **ptr) {
+  if (*ptr) {
+    FREE(*ptr);
+    *ptr = NULL;
+  }
+}
+
 static void *narray_dtor(void *self) {
   struct laud_narray *narray = self;
 
-  FREE(narray->values);
-  FREE(narray->shape);
+  free_and_null(&narray->shape);
+  free_and_null(&narray->meta_data);
+  free_and_null(&narray->values);
   blip(narray->computation_node);
 
   // UbjectError.warn("destroyed %s data @ %p\n", className(narray), narray);

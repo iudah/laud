@@ -1,5 +1,5 @@
-#ifndef BASE_H
-#define BASE_H
+#ifndef LAUD_BASE_H
+#define LAUD_BASE_H
 
 #ifdef _WIN32
 

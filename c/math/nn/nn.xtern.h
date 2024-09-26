@@ -1,5 +1,5 @@
-#ifndef NN_XTERN_H
-#define NN_XTERN_H
+#ifndef LAUD_NN_XTERN_H
+#define LAUD_NN_XTERN_H
 
 #include "binary_cross_entropy/binary_cross_entropy.xtern.h"
 #include "mse/mse.xtern.h"

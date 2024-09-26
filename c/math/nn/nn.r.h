@@ -1,5 +1,5 @@
-#ifndef NN_R_H
-#define NN_R_H
+#ifndef LAUD_NN_R_H
+#define LAUD_NN_R_H
 
 #include "binary_cross_entropy/binary_cross_entropy.r.h"
 #include "mse/mse.r.h"

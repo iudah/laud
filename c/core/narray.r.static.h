@@ -1,7 +1,11 @@
-#ifndef NARRAY_R_STATIC_H
-#define NARRAY_R_STATIC_H
+#ifndef LAUD_NARRAY_R_STATIC_H
+#define LAUD_NARRAY_R_STATIC_H
 
+#include "BaseObject.h"
+#include "Ubject.r.h"
+#include "mem_lk.h"
 #include <stddef.h>
+#include <stdint.h>
 
 #define LAUD_NARRAY_IMPLEMENTATION
 #include "narray.r.h"
@@ -44,6 +48,14 @@ static inline uint64_t length(const struct laud_narray *narray) {
  */
 static inline number_t *values(const struct laud_narray *narray) {
   return narray->values;
+}
+
+static inline void set_meta_data(struct laud_narray *output, void *meta) {
+  output->meta_data = meta;
+}
+
+static inline void *get_meta_data(const struct laud_narray *output) {
+  return output->meta_data;
 }
 
 #endif

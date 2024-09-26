@@ -1,5 +1,5 @@
-#ifndef NODE_R_STATIC_H
-#define NODE_R_STATIC_H
+#ifndef LAUD_NODE_R_STATIC_H
+#define LAUD_NODE_R_STATIC_H
 
 #include <Ubject.h>
 #include <inttypes.h>

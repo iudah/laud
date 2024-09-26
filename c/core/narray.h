@@ -1,5 +1,5 @@
-#ifndef NARRAY_H
-#define NARRAY_H
+#ifndef LAUD_NARRAY_H
+#define LAUD_NARRAY_H
 
 /**
  * @file narray.h

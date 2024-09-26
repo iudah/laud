@@ -1,5 +1,5 @@
-#ifndef NODE_R_H
-#define NODE_R_H
+#ifndef LAUD_NODE_R_H
+#define LAUD_NODE_R_H
 
 #include "base.r.h"
 

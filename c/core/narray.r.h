@@ -1,5 +1,5 @@
-#ifndef NARRAY_R_H
-#define NARRAY_R_H
+#ifndef LAUD_NARRAY_R_H
+#define LAUD_NARRAY_R_H
 
 /**
  * @file narray_r.h
@@ -28,6 +28,7 @@ struct laud_narray {
     uint16_t rank;      /**< Number of dimensions (rank) of the array */
     struct graph_node
         *computation_node; /**< Pointer to computation graph node */
+    void *meta_data;
 
 #ifndef LAUD_NARRAY_IMPLEMENTATION
   })];

@@ -1,5 +1,5 @@
-#ifndef VAR_R_STATIC_H
-#define VAR_R_STATIC_H
+#ifndef LAUD_VAR_R_STATIC_H
+#define LAUD_VAR_R_STATIC_H
 
 #include "narray.h"
 #include "var.r.h"
