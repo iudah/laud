@@ -1,5 +1,5 @@
-#ifndef SLICE_X_NARRAY_H
-#define SLICE_X_NARRAY_H
+#ifndef LAUD_SLICE_X_NARRAY_H
+#define LAUD_SLICE_X_NARRAY_H
 
 #include <Ubject.h>
 #include <Ubject.r.h>
@@ -9,6 +9,10 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+
+#ifndef LAUD_NARRAY_IMPLEMENTATION
+#error this file must be #included in narray.c only
+#endif
 
 #define LAUD_NARRAY_IMPLEMENTATION
 #include "../../core/base.h"

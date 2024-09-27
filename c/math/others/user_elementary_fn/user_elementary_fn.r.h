@@ -1,5 +1,5 @@
-#ifndef USER_ELEMENTARY_FN_R_H
-#define USER_ELEMENTARY_FN_R_H
+#ifndef LAUD_USER_ELEMENTARY_FN_R_H
+#define LAUD_USER_ELEMENTARY_FN_R_H
 
 #include "../../../core/var.r.h"
 #include "../../../math/others/user_elementary_fn/user_elementary_fn.def.h"

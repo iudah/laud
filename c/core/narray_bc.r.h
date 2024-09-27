@@ -1,5 +1,5 @@
-#ifndef NARRAY_BC_R_H
-#define NARRAY_BC_R_H
+#ifndef LAUD_NARRAY_BC_R_H
+#define LAUD_NARRAY_BC_R_H
 
 /**
  * @file narray_bc.r.h

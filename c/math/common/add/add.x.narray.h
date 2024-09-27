@@ -1,5 +1,5 @@
-#ifndef ADD_X_NARRAY_H
-#define ADD_X_NARRAY_H
+#ifndef LAUD_ADD_X_NARRAY_H
+#define LAUD_ADD_X_NARRAY_H
 
 #include <inttypes.h>
 #include <stdint.h>
@@ -11,7 +11,7 @@
 #include "../../../core/narray_bc.r.static.h"
 
 static void *narray_add_(const struct laud_narray *operand_a,
-                        const struct laud_narray *operand_b) {
+                         const struct laud_narray *operand_b) {
 
   struct laud_element_broadcast broadcast_element = {
       .multiplier_a = NULL,

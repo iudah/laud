@@ -1,5 +1,5 @@
-#ifndef USER_ELEMENTARY_FN_X_NARRAY_H
-#define USER_ELEMENTARY_FN_X_NARRAY_H
+#ifndef LAUD_USER_ELEMENTARY_FN_X_NARRAY_H
+#define LAUD_USER_ELEMENTARY_FN_X_NARRAY_H
 
 #include <Ubject.h>
 #include <inttypes.h>

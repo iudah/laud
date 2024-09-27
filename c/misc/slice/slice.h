@@ -1,5 +1,5 @@
-#ifndef SLICE_H
-#define SLICE_H
+#ifndef LAUD_SLICE_H
+#define LAUD_SLICE_H
 
 #include "../../core/base.h"
 
@@ -12,8 +12,8 @@
  */
 LAUDAPI void *laud_slice(const void *self, const char *slice_format, ...)
     __attribute__((format(printf, 2, 3), warn_unused_result));
-LAUDAPI void *laud_slice_generator(const void *self, const char *slice_format, ...)
+LAUDAPI void *laud_slice_generator(const void *self, const char *slice_format,
+                                   ...)
     __attribute__((format(printf, 2, 3), warn_unused_result));
-
 
 #endif

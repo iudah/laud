@@ -1,14 +1,15 @@
-#ifndef SLICE_X_VAR_H
-#define SLICE_X_VAR_H
+#ifndef LAUD_SLICE_X_VAR_H
+#define LAUD_SLICE_X_VAR_H
 
 #include <Ubject.h>
 
-#define VAR_PROTECTED
+#ifndef LAUD_VAR_IMPLEMENTATION
+#error this must be #included in var.c only
+#define LAUD_VAR_IMPLEMENTATION
+#endif
+
 #include "../../core/var.r.h"
 #include "../../misc/slice/slice.r.h"
-
-// static void *var_slice(const struct laud_var *operand, const void *
-// slice_data, const void *slice_shape, const);
 
 static void *var_slice(const struct laud_var *operand, const void *slice_data,
                        const uint64_t *slice_shape,

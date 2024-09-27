@@ -1,5 +1,5 @@
-#ifndef USER_ELEMENTARY_FN_X_VAR_H
-#define USER_ELEMENTARY_FN_X_VAR_H
+#ifndef LAUD_USER_ELEMENTARY_FN_X_VAR_H
+#define LAUD_USER_ELEMENTARY_FN_X_VAR_H
 
 #include <inttypes.h>
 #include <stdint.h>

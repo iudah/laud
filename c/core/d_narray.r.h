@@ -1,12 +1,11 @@
-#ifndef D_NARRAY_R_H
-#define D_NARRAY_R_H
+#ifndef LAUD_D_NARRAY_R_H
+#define LAUD_D_NARRAY_R_H
 
 /**
  * @file d_narray.r.h
  * @brief Header file declaring functions for differentiating N-dimensional
  * arrays in Laud.
  */
-
 
 #include <stddef.h>
 

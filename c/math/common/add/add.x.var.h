@@ -1,5 +1,5 @@
-#ifndef ADD_XTERN_H
-#define ADD_XTERN_H
+#ifndef LAUD_ADD_XTERN_H
+#define LAUD_ADD_XTERN_H
 
 #include <inttypes.h>
 #include <stdint.h>

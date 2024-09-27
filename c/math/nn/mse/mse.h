@@ -1,5 +1,5 @@
-#ifndef MSE_H
-#define MSE_H
+#ifndef LAUD_MSE_H
+#define LAUD_MSE_H
 
 #include "../../../core/base.h"
 

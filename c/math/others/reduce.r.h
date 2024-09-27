@@ -1,5 +1,5 @@
-#ifndef REDUCE_R_H
-#define REDUCE_R_H
+#ifndef LAUD_REDUCE_R_H
+#define LAUD_REDUCE_R_H
 
 #include "../../core/var.r.h"
 

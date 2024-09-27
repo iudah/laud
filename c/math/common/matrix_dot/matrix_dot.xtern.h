@@ -1,5 +1,5 @@
-#ifndef MATRIX_DOT_XTERN_H
-#define MATRIX_DOT_XTERN_H
+#ifndef LAUD_MATRIX_DOT_XTERN_H
+#define LAUD_MATRIX_DOT_XTERN_H
 
 #include <inttypes.h>
 #include <stdint.h>

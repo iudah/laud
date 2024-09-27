@@ -1,5 +1,5 @@
-#ifndef MATRIX_DOT_R_H
-#define MATRIX_DOT_R_H
+#ifndef LAUD_MATRIX_DOT_R_H
+#define LAUD_MATRIX_DOT_R_H
 
 #include "../../../core/var.r.h"
 
@@ -19,7 +19,7 @@ extern const void *LaudMatrixDotClass;
 void *laud_narray_dmatrix_dot(const struct laud_narray *operand_a,
                               const struct laud_narray *operand_b,
                               const uint64_t respect_index,
-                            const  struct laud_narray *pre_dx,
-                            const  struct laud_narray *calc_result);
+                              const struct laud_narray *pre_dx,
+                              const struct laud_narray *calc_result);
 
 #endif

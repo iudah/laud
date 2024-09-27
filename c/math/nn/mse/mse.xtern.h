@@ -1,5 +1,5 @@
-#ifndef MSE_XTERN_H
-#define MSE_XTERN_H
+#ifndef LAUD_MSE_XTERN_H
+#define LAUD_MSE_XTERN_H
 
 #ifdef LAUD_NARRAY_IMPLEMENTATION
 

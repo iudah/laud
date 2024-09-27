@@ -1,5 +1,5 @@
-#ifndef SIGMOID_R_H
-#define SIGMOID_R_H
+#ifndef LAUD_SIGMOID_R_H
+#define LAUD_SIGMOID_R_H
 
 #include "../../../core/var.r.h"
 

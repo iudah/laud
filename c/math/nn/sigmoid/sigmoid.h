@@ -1,5 +1,5 @@
-#ifndef SIGMOID_H
-#define SIGMOID_H
+#ifndef LAUD_SIGMOID_H
+#define LAUD_SIGMOID_H
 
 #include "../../../core/base.h"
 

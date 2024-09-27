@@ -1,5 +1,5 @@
-#ifndef BINARY_CROSS_ENTROPY_H
-#define BINARY_CROSS_ENTROPY_H
+#ifndef LAUD_BINARY_CROSS_ENTROPY_H
+#define LAUD_BINARY_CROSS_ENTROPY_H
 
 #include "../../../core/base.h"
 

@@ -1,5 +1,5 @@
-#ifndef RELU_H
-#define RELU_H
+#ifndef LAUD_RELU_H
+#define LAUD_RELU_H
 
 #include "../../../core/base.h"
 

@@ -1,5 +1,5 @@
-#ifndef USER_ELEMENTARY_FN_XTERN_H
-#define USER_ELEMENTARY_FN_XTERN_H
+#ifndef LAUD_USER_ELEMENTARY_FN_XTERN_H
+#define LAUD_USER_ELEMENTARY_FN_XTERN_H
 
 #include <inttypes.h>
 #include <stdint.h>

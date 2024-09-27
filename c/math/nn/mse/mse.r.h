@@ -1,5 +1,5 @@
-#ifndef MSE_R_H
-#define MSE_R_H
+#ifndef LAUD_MSE_R_H
+#define LAUD_MSE_R_H
 
 #include "../../../core/var.r.h"
 

@@ -1,5 +1,5 @@
-#ifndef BINARY_CROSS_ENTROPY_R_H
-#define BINARY_CROSS_ENTROPY_R_H
+#ifndef LAUD_BINARY_CROSS_ENTROPY_R_H
+#define LAUD_BINARY_CROSS_ENTROPY_R_H
 
 #include "../../../core/var.r.h"
 

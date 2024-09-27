@@ -1,5 +1,5 @@
-#ifndef RELU_XTERN_H
-#define RELU_XTERN_H
+#ifndef LAUD_RELU_XTERN_H
+#define LAUD_RELU_XTERN_H
 
 #ifdef LAUD_NARRAY_IMPLEMENTATION
 

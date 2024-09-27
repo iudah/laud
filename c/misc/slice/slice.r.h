@@ -1,5 +1,5 @@
-#ifndef SLICE_R_H
-#define SLICE_R_H
+#ifndef LAUD_SLICE_R_H
+#define LAUD_SLICE_R_H
 
 #include "../../core/var.r.h"
 

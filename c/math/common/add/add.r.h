@@ -1,5 +1,5 @@
-#ifndef ADD_R_H
-#define ADD_R_H
+#ifndef LAUD_ADD_R_H
+#define LAUD_ADD_R_H
 
 #include "../../../core/var.r.h"
 

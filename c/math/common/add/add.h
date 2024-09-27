@@ -1,5 +1,5 @@
-#ifndef ADD_H
-#define ADD_H
+#ifndef LAUD_ADD_H
+#define LAUD_ADD_H
 
 #include "../../../core/base.h"
 

@@ -1,5 +1,5 @@
-#ifndef NARRAY_BC_R_STATIC_H
-#define NARRAY_BC_R_STATIC_H
+#ifndef LAUD_NARRAY_BC_R_STATIC_H
+#define LAUD_NARRAY_BC_R_STATIC_H
 
 #include <Ubject.h>
 #include <mem_lk.h>
